@@ -13,6 +13,7 @@ interface Post {
   id: string;
   content: string;
   created_at: string;
+  image_url?: string; // Add image_url field
   profiles: {
     full_name: string;
     user_id: string;
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const [newPost, setNewPost] = useState('');
   const [loading, setLoading] = useState(false);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [imageFile, setImageFile] = useState<File | null>(null); // Add image file state
 
   useEffect(() => {
     fetchPosts();
@@ -66,17 +68,42 @@ export default function Dashboard() {
 
     setLoading(true);
 
+    let imageUrl = null;
+
     try {
+      // 1. Upload image if selected
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+        const { data, error: uploadError } = await supabase
+          .storage
+          .from('post-images') // Make sure you have a 'post-images' bucket in Supabase Storage
+          .upload(fileName, imageFile);
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: publicUrlData } = supabase
+          .storage
+          .from('post-images')
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrlData.publicUrl;
+      }
+
+      // 2. Insert post with image_url if available
       const { error } = await supabase
         .from('posts')
         .insert({
           content: newPost.trim(),
-          author_id: user.id
+          author_id: user.id,
+          image_url: imageUrl // Save image URL
         });
 
       if (error) throw error;
 
       setNewPost('');
+      setImageFile(null); // Reset image input
       toast({
         title: "Success",
         description: "Your post has been shared!"
@@ -154,6 +181,22 @@ export default function Dashboard() {
                 rows={4}
                 className="resize-none"
               />
+              {/* Image upload input */}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={e => setImageFile(e.target.files?.[0] || null)}
+                className="block w-full text-sm text-muted-foreground"
+              />
+              {imageFile && (
+                <div className="mt-2">
+                  <img
+                    src={URL.createObjectURL(imageFile)}
+                    alt="Preview"
+                    className="max-h-40 rounded border"
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
                   {newPost.length}/1000 characters
@@ -211,6 +254,14 @@ export default function Dashboard() {
                         {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                       </span>
                     </div>
+                    {/* Show image if present */}
+                    {post.image_url && (
+                      <img
+                        src={post.image_url}
+                        alt="Post"
+                        className="max-h-60 rounded border mb-2"
+                      />
+                    )}
                     <p className="text-foreground leading-relaxed whitespace-pre-wrap">
                       {post.content}
                     </p>
