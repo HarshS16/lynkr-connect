@@ -14,10 +14,9 @@ export async function getConnections(userId: string) {
 }
 
 export async function getPendingRequests(userId: string) {
-  // Requests where user is the addressee and status is pending
   return supabase
     .from('connections')
-    .select('id, requester_id, addressee_id, status, created_at')
+    .select('id, requester_id')
     .eq('addressee_id', userId)
     .eq('status', 'pending');
 }

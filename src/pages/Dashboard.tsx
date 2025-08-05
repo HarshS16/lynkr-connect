@@ -1,4 +1,6 @@
+import { Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { getPendingRequests, respondToRequest } from '@/integrations/supabase/connections';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -28,10 +30,18 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [postsLoading, setPostsLoading] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  useEffect(() => {
+    if (user?.id) {
+      getPendingRequests(user.id).then(({ data }) => setPendingRequests(data || []));
+    }
+  }, [user?.id]);
 
   const fetchPosts = async () => {
     try {
@@ -136,6 +146,12 @@ export default function Dashboard() {
       title: "Signed out",
       description: "You have been successfully signed out"
     });
+  };
+
+  const handleAccept = async (connectionId: string) => {
+    await respondToRequest(connectionId, 'accepted');
+    setPendingRequests((prev) => prev.filter((req) => req.id !== connectionId));
+    toast({ title: "Connection accepted!" });
   };
 
   return (
