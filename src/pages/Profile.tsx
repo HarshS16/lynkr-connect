@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
   const { user, signOut, updateAvatar, deleteAvatar } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -52,6 +53,12 @@ export default function Profile() {
       fetchUserPosts();
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId && user) {
+      navigate(`/profile/${user.id}`, { replace: true });
+    }
+  }, [userId, user, navigate]);
 
   const fetchProfile = async () => {
     try {

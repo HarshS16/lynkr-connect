@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,7 +21,7 @@ interface Post {
 }
 
 export default function Dashboard() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth(); // Make sure user is available
   const { toast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState('');
@@ -151,7 +150,7 @@ export default function Dashboard() {
                 <Link to="/dashboard" className="text-foreground hover:text-primary">
                   Home
                 </Link>
-                <Link to={`/profile`} className="text-foreground hover:text-primary">
+                <Link to={user ? `/profile/${user.id}` : "/profile"} className="text-foreground hover:text-primary">
                   My Profile
                 </Link>
               </nav>

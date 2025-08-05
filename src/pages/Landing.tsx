@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 // Import Framer Motion
 import { motion, AnimatePresence } from 'framer-motion';
 // Import icons (assuming you have a library like react-icons or lucide-react)
-import { Users, Lightbulb, TrendingUp, Sparkles, Network } from 'lucide-react';
+import { Users, Lightbulb, TrendingUp, Sparkles, Network, User } from 'lucide-react';
 
 // Animation variants
 const fadeVariants = {
@@ -486,6 +486,16 @@ export default function Landing() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Profile Link Button (conditionally rendered if user is logged in) */}
+      {user && (
+        <Link to={user ? `/profile/${user.id}` : "/profile"}>
+          <Button variant="ghost" size="sm">
+            <User className="h-4 w-4 mr-2" />
+            Profile
+          </Button>
+        </Link>
+      )}
     </div>
   );
 }
