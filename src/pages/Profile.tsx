@@ -1,8 +1,9 @@
+
 // import { useState, useEffect } from 'react';
 // import { useParams, Link, useNavigate } from 'react-router-dom';
 // import { useAuth } from '@/hooks/useAuth';
 // import { supabase } from '@/integrations/supabase/client';
-// import { sendConnectionRequest } from '@/integrations/supabase/connections';
+// import { sendConnectionRequest, getConnections } from '@/integrations/supabase/connections'; // Added getConnections import
 // import { Button } from '@/components/ui/button';
 // import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 // import { Input } from '@/components/ui/input';
@@ -534,12 +535,11 @@
 //   return supabase.from('connections').insert({ requester_id: requesterId, addressee_id: addresseeId });
 // }
 
-
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { sendConnectionRequest, getConnections } from '@/integrations/supabase/connections'; // Added getConnections import
+import { sendConnectionRequest, getConnections } from '@/integrations/supabase/connections';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -881,7 +881,7 @@ export default function Profile() {
                         <div className="text-center">
                           <h2 className="text-xl font-semibold">{profile.full_name}</h2>
                           {profile.bio && <p className="text-gray-600 mt-2">{profile.bio}</p>}
-                          {/* Connections count just below bio */}
+                          {/* Connections count and dialog trigger */}
                           <div className="mt-2">
                             <span
                               className="cursor-pointer text-blue-600 hover:underline font-medium"
@@ -1021,32 +1021,24 @@ export default function Profile() {
           </div>
         </DialogContent>
       </Dialog>
-
-      <div>
-        <span
-          className="cursor-pointer text-blue-600 hover:underline"
-          onClick={() => setConnectionsOpen(true)}
-        >
-          {connections.length} Connections
-        </span>
-        {connectionsOpen && (
-          <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Connections</DialogTitle>
-              </DialogHeader>
-              <ul>
-                {connections.map(conn => (
-                  <li key={conn.id}>
-                    {/* Show the other user's name, not the current user */}
-                    {conn.requester_id === userId ? conn.addressee_id : conn.requester_id}
-                  </li>
-                ))}
-              </ul>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
+      
+      {connectionsOpen && (
+        <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Connections</DialogTitle>
+            </DialogHeader>
+            <ul>
+              {connections.map(conn => (
+                <li key={conn.id}>
+                  {/* Show the other user's name, not the current user */}
+                  {conn.requester_id === userId ? conn.addressee_id : conn.requester_id}
+                </li>
+              ))}
+            </ul>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {!isOwnProfile && (
         <Button
