@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +14,7 @@ interface Post {
   id: string;
   content: string;
   created_at: string;
-  image_url?: string; // Add image_url field
+  image_url?: string;
   profiles: {
     full_name: string;
     user_id: string;
@@ -21,13 +22,13 @@ interface Post {
 }
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const { toast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState('');
   const [loading, setLoading] = useState(false);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [imageFile, setImageFile] = useState<File | null>(null); // Add image file state
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchPosts();
@@ -41,6 +42,7 @@ export default function Dashboard() {
           id,
           content,
           created_at,
+          image_url,
           profiles!posts_author_id_fkey (
             full_name,
             user_id
@@ -64,52 +66,58 @@ export default function Dashboard() {
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPost.trim() || !user) return;
+    if (!newPost.trim()) return;
 
     setLoading(true);
 
-    let imageUrl = null;
-
     try {
-      // 1. Upload image if selected
+      // Ensure we have a valid authenticated session
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionUser = sessionData?.session?.user;
+
+      if (!sessionUser) {
+        throw new Error("User session not found. Please sign in again.");
+      }
+
+      let imageUrl: string | null = null;
+
+      // Upload image if selected
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}_${Date.now()}.${fileExt}`;
-        const { data, error: uploadError } = await supabase
+        const fileName = `${sessionUser.id}_${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase
           .storage
-          .from('post-images') // Make sure you have a 'post-images' bucket in Supabase Storage
+          .from('post-images')
           .upload(fileName, imageFile);
 
         if (uploadError) throw uploadError;
 
-        // Get public URL
-        const { data: publicUrlData } = supabase
+        // Get public URL of uploaded image
+        imageUrl = supabase
           .storage
           .from('post-images')
-          .getPublicUrl(fileName);
-
-        imageUrl = publicUrlData.publicUrl;
+          .getPublicUrl(fileName).data.publicUrl;
       }
 
-      // 2. Insert post with image_url if available
+      // Insert post into DB
       const { error } = await supabase
         .from('posts')
         .insert({
           content: newPost.trim(),
-          author_id: user.id,
-          image_url: imageUrl // Save image URL
+          author_id: sessionUser.id,
+          image_url: imageUrl
         });
 
       if (error) throw error;
 
       setNewPost('');
-      setImageFile(null); // Reset image input
+      setImageFile(null);
       toast({
         title: "Success",
         description: "Your post has been shared!"
       });
-      
-      // Refresh posts
+
       fetchPosts();
     } catch (error: any) {
       console.error('Error creating post:', error);
@@ -143,14 +151,14 @@ export default function Dashboard() {
                 <Link to="/dashboard" className="text-foreground hover:text-primary">
                   Home
                 </Link>
-                <Link to={`/profile/${user?.id}`} className="text-foreground hover:text-primary">
+                <Link to={`/profile`} className="text-foreground hover:text-primary">
                   My Profile
                 </Link>
               </nav>
             </div>
-            
+
             <div className="flex items-center gap-4">
-              <Link to={`/profile/${user?.id}`}>
+              <Link to={`/profile`}>
                 <Button variant="ghost" size="sm">
                   <User className="h-4 w-4 mr-2" />
                   Profile
@@ -181,11 +189,10 @@ export default function Dashboard() {
                 rows={4}
                 className="resize-none"
               />
-              {/* Image upload input */}
               <input
                 type="file"
                 accept="image/*"
-                onChange={e => setImageFile(e.target.files?.[0] || null)}
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
                 className="block w-full text-sm text-muted-foreground"
               />
               {imageFile && (
@@ -201,10 +208,7 @@ export default function Dashboard() {
                 <span className="text-sm text-muted-foreground">
                   {newPost.length}/1000 characters
                 </span>
-                <Button 
-                  type="submit" 
-                  disabled={!newPost.trim() || loading}
-                >
+                <Button type="submit" disabled={!newPost.trim() || loading}>
                   {loading ? 'Posting...' : 'Post'}
                 </Button>
               </div>
@@ -215,7 +219,7 @@ export default function Dashboard() {
         {/* Posts Feed */}
         <div className="space-y-6">
           <h2 className="text-xl font-semibold">Recent Posts</h2>
-          
+
           {postsLoading ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
@@ -244,7 +248,7 @@ export default function Dashboard() {
                 <CardContent className="p-6">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Link 
+                      <Link
                         to={`/profile/${post.profiles.user_id}`}
                         className="font-semibold text-primary hover:underline"
                       >
@@ -254,7 +258,6 @@ export default function Dashboard() {
                         {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                       </span>
                     </div>
-                    {/* Show image if present */}
                     {post.image_url && (
                       <img
                         src={post.image_url}
