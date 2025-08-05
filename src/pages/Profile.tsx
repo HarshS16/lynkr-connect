@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { sendConnectionRequest } from '@/integrations/supabase/connections';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ export default function Profile() {
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [connections, setConnections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ full_name: '', bio: '' });
@@ -44,6 +46,7 @@ export default function Profile() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
   
   const isOwnProfile = user?.id === userId;
 
@@ -59,6 +62,12 @@ export default function Profile() {
       navigate(`/profile/${user.id}`, { replace: true });
     }
   }, [userId, user, navigate]);
+
+  useEffect(() => {
+    if (userId) {
+      getConnections(userId).then(({ data }) => setConnections(data || []));
+    }
+  }, [userId]);
 
   const fetchProfile = async () => {
     try {
@@ -381,7 +390,7 @@ export default function Profile() {
                           </CardContent>
                         </Card>
                       ))
-                    )}
+                    }
                   </CardContent>
                 </Card>
               </div>
@@ -466,6 +475,52 @@ export default function Profile() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <div>
+        <span
+          className="cursor-pointer text-blue-600 hover:underline"
+          onClick={() => setConnectionsOpen(true)}
+        >
+          {connections.length} Connections
+        </span>
+        {connectionsOpen && (
+          <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Connections</DialogTitle>
+              </DialogHeader>
+              <ul>
+                {connections.map(conn => (
+                  <li key={conn.id}>
+                    {/* Show the other user's name, not the current user */}
+                    {conn.requester_id === userId ? conn.addressee_id : conn.requester_id}
+                  </li>
+                ))}
+              </ul>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      {!isOwnProfile && (
+        <Button
+          onClick={async () => {
+            if (!user?.id || !userId) return;
+            const { error } = await sendConnectionRequest(user.id, userId);
+            if (error) {
+              toast({ title: "Already sent!", description: error.message, variant: "destructive" });
+            } else {
+              toast({ title: "Request sent!" });
+            }
+          }}
+        >
+          Connect
+        </Button>
+      )}
     </div>
   );
+}
+
+export async function sendConnectionRequest(requesterId: string, addresseeId: string) {
+  return supabase.from('connections').insert({ requester_id: requesterId, addressee_id: addresseeId });
 }
