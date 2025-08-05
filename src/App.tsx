@@ -9,7 +9,7 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-import ResetPassword from "./pages/reset-password";
+import ResetPassword from "./pages/Reset-password";
 
 const queryClient = new QueryClient();
 
