@@ -399,7 +399,7 @@
 //                           </CardContent>
 //                         </Card>
 //                       ))
-//                     }
+//                     )}
 //                   </CardContent>
 //                 </Card>
 //               </div>
@@ -936,7 +936,7 @@ export default function Profile() {
                           </CardContent>
                         </Card>
                       ))
-                    }
+                    )}
                   </CardContent>
                 </Card>
               </div>
