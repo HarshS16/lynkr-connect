@@ -16,6 +16,7 @@ export default function ResetPassword() {
 
   // Supabase sets the access_token in the URL for password reset
   const accessToken = searchParams.get('access_token');
+  const refreshToken = searchParams.get('refresh_token');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +30,10 @@ export default function ResetPassword() {
     }
     setLoading(true);
     // Set the access token in the session for supabase
-    if (accessToken) {
-      await supabase.auth.setSession({ access_token: accessToken, refresh_token: accessToken });
+    if (accessToken && refreshToken) {
+      await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      // Clean up the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
@@ -40,6 +43,21 @@ export default function ResetPassword() {
       toast({ title: 'Password reset!', description: 'You can now sign in with your new password.' });
       setTimeout(() => navigate('/'), 2000);
     }
+  };
+
+  const signUp = async (email: string, password: string, fullName: string, bio?: string) => {
+    const redirectUrl = "https://your-vercel-domain.vercel.app"; // <-- Set your Vercel landing page here
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: fullName,
+          bio: bio
+        }
+      }
+    });
   };
 
   return (
@@ -74,4 +92,4 @@ export default function ResetPassword() {
       </Card>
     </div>
   );
-} 
+}

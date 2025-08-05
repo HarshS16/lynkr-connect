@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, bio?: string) => {
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    const redirectUrl = "https://lynkr-connect.vercel.app/"
     
     // Create user first
     const { data, error: signUpError } = await supabase.auth.signUp({
