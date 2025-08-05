@@ -5,10 +5,17 @@ export async function sendConnectionRequest(requesterId: string, addresseeId: st
 }
 
 export async function getConnections(userId: string) {
-  // Get accepted connections for a user
   return supabase
     .from('connections')
-    .select('id, requester_id, addressee_id, status, created_at')
+    .select(`
+      id,
+      requester_id,
+      addressee_id,
+      status,
+      created_at,
+      requester:requester_id (user_id, full_name, avatar_url),
+      addressee:addressee_id (user_id, full_name, avatar_url)
+    `)
     .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
     .eq('status', 'accepted');
 }
