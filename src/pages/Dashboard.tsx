@@ -157,12 +157,15 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-4">
-              <Link to={`/profile`}>
-                <Button variant="ghost" size="sm">
-                  <User className="h-4 w-4 mr-2" />
-                  Profile
-                </Button>
-              </Link>
+              {user && (
+  <Link to={`/profile/${user.id}`}>
+    <Button variant="ghost" size="sm">
+      <User className="h-4 w-4 mr-2" />
+      Profile
+    </Button>
+  </Link>
+)}
+
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
