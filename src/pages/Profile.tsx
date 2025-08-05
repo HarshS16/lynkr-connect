@@ -344,6 +344,15 @@
 //                         <div className="text-center">
 //                           <h2 className="text-xl font-semibold">{profile.full_name}</h2>
 //                           {profile.bio && <p className="text-gray-600 mt-2">{profile.bio}</p>}
+//                           {/* Connections count just below bio */}
+//                           <div className="mt-2">
+//                             <span
+//                               className="cursor-pointer text-blue-600 hover:underline font-medium"
+//                               onClick={() => setConnectionsOpen(true)}
+//                             >
+//                               {connections.length} Connections
+//                             </span>
+//                           </div>
 //                           <p className="text-sm text-gray-500 mt-2">
 //                             Member since {format(new Date(profile.created_at), 'MMM yyyy')}
 //                           </p>
@@ -872,6 +881,15 @@ export default function Profile() {
                         <div className="text-center">
                           <h2 className="text-xl font-semibold">{profile.full_name}</h2>
                           {profile.bio && <p className="text-gray-600 mt-2">{profile.bio}</p>}
+                          {/* Connections count just below bio */}
+                          <div className="mt-2">
+                            <span
+                              className="cursor-pointer text-blue-600 hover:underline font-medium"
+                              onClick={() => setConnectionsOpen(true)}
+                            >
+                              {connections.length} Connections
+                            </span>
+                          </div>
                           <p className="text-sm text-gray-500 mt-2">
                             Member since {format(new Date(profile.created_at), 'MMM yyyy')}
                           </p>
@@ -918,7 +936,7 @@ export default function Profile() {
                           </CardContent>
                         </Card>
                       ))
-                    )}
+                    }
                   </CardContent>
                 </Card>
               </div>
