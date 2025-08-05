@@ -186,41 +186,6 @@ Before you begin, ensure you have the following installed:
 
 ---
 
-## 📁 Project Structure
-
-```
-lynkr/
-├── 📁 public/                 # Static assets
-│   ├── favicon.ico
-│   └── index.html
-├── 📁 src/                    # Frontend source code
-│   ├── 📁 components/         # Reusable UI components
-│   │   ├── 📁 ui/            # Base UI components
-│   │   ├── 📁 layout/        # Layout components
-│   │   └── 📁 features/      # Feature-specific components
-│   ├── 📁 hooks/             # Custom React hooks
-│   ├── 📁 pages/             # Page components
-│   ├── 📁 services/          # API services
-│   ├── 📁 utils/             # Utility functions
-│   ├── 📁 types/             # TypeScript type definitions
-│   └── 📁 styles/            # Global styles
-├── 📁 server/                 # Backend source code
-│   ├── 📁 src/
-│   │   ├── 📁 controllers/   # Route controllers
-│   │   ├── 📁 middleware/    # Express middleware
-│   │   ├── 📁 models/        # Database models
-│   │   ├── 📁 routes/        # API routes
-│   │   ├── 📁 services/      # Business logic
-│   │   └── 📁 utils/         # Server utilities
-│   ├── 📁 prisma/            # Database schema & migrations
-│   └── 📁 tests/             # Backend tests
-├── 📁 docs/                  # Documentation
-├── 📄 package.json           # Dependencies & scripts
-├── 📄 README.md              # You are here!
-└── 📄 .env.example           # Environment variables template
-```
-
----
 
 ## 🔧 Configuration
 
