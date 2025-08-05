@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/reset-password";
+import UpdatePassword from "./pages/update-password";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,8 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/reset-password" element={<ResetPassword />} />
+            
+  <Route path="/update-password" element={<UpdatePassword />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
