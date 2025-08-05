@@ -9,6 +9,9 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, bio?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
+  updateAvatar: (file: File) => Promise<{ error: any, url?: string }>;
+  deleteAvatar: () => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,7 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string, bio?: string) => {
     const redirectUrl = `${window.location.origin}/dashboard`;
     
-    const { error } = await supabase.auth.signUp({
+    // Create user first
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -53,7 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
     
-    return { error };
+    if (signUpError) return { error: signUpError };
+    
+    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {
@@ -69,8 +75,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error };
+  };
+
+  const updateAvatar = async (file: File) => {
+    if (!user) return { error: 'Not authenticated' };
+    const { data: storageData, error: storageError } = await supabase.storage.from('avatars').upload(`public/${user.id}/${Date.now()}_${file.name}`, file, { upsert: true });
+    if (storageError) return { error: storageError };
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storageData.path);
+    const avatar_url = urlData.publicUrl;
+    const { error } = await supabase.from('profiles').update({ avatar_url }).eq('user_id', user.id);
+    return { error, url: avatar_url };
+  };
+
+  const deleteAvatar = async () => {
+    if (!user) return { error: 'Not authenticated' };
+    // Get current avatar_url
+    const { data, error: fetchError } = await supabase.from('profiles').select('avatar_url').eq('user_id', user.id).single();
+    if (fetchError) return { error: fetchError };
+    const avatar_url = data?.avatar_url;
+    if (avatar_url) {
+      // Extract path from public URL
+      const path = avatar_url.split('/storage/v1/object/public/avatars/')[1];
+      if (path) {
+        await supabase.storage.from('avatars').remove([`public/${user.id}/${path.split('/').pop()}`]);
+      }
+    }
+    const { error } = await supabase.from('profiles').update({ avatar_url: null }).eq('user_id', user.id);
+    return { error };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, resetPassword, updateAvatar, deleteAvatar }}>
       {children}
     </AuthContext.Provider>
   );
