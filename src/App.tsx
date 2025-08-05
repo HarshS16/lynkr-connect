@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/Reset-password";
 
+
 const queryClient = new QueryClient();
 
 const App = () => (
