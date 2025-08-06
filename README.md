@@ -100,23 +100,6 @@ Visit [http://localhost:3000](http://localhost:3000) to use the app.
 
 ---
 
-
-## 👤 Demo/Admin Users
-
-> **Note:** If you have seeded demo users, list them here.  
-> Otherwise, register a new user via the signup form.
-
-**Example:**
-- **Admin:**  
-  Email: `admin@lynkr.com`  
-  Password: `admin123`
-
-- **Demo User:**  
-  Email: `demo@lynkr.com`  
-  Password: `demo123`
-
----
-
 ## 🌟 Extra Features
 
 - **Notifications:** Get notified when your connection request is accepted.
@@ -141,4 +124,4 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-**Made with ❤️ by the Lynkr Team**
+**Made with ❤️ by Harsh Srivastava**
