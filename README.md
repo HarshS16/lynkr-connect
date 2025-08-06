@@ -17,10 +17,6 @@
 
 </div>
 
----
-# 🚀 Lynkr - Professional Networking Platform
-
-A modern LinkedIn-inspired professional networking platform to connect, share, and grow with your peers.
 
 ---
 
