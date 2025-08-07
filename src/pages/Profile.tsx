@@ -58,8 +58,15 @@ export default function Profile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    message: string;
+    created_at: string;
+    read: boolean;
+  }>>([]);
   const abortControllers = useRef<AbortController[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ full_name: "", bio: "" });
   const [saving, setSaving] = useState(false);
@@ -69,6 +76,40 @@ export default function Profile() {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+
+  const fetchNotifications = async () => {
+    if (!user?.id) return;
+    setNotificationsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id, message, created_at, read')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setNotifications(data || []);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const markNotificationAsRead = async (id: string) => {
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', id);
+
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? {...n, read: true} : n)
+      );
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
 
   const isOwnProfile = user?.id === userId;
 
@@ -103,7 +144,7 @@ export default function Profile() {
     }
   }, [userId, user, navigate]);
 
-  const fetchConnections = async () => {
+  const fetchConnections = async (options?: { signal?: AbortSignal }) => {
     const { data, error } = await supabase
       .from("connections")
       .select(`
@@ -115,7 +156,8 @@ export default function Profile() {
         requester:profiles!requester_id(full_name, avatar_url, user_id),
         addressee:profiles!addressee_id(full_name, avatar_url, user_id)
       `)
-      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+      .abortSignal(options?.signal);
     
     if (error) {
       console.error("Error fetching connections:", error);
@@ -329,9 +371,16 @@ export default function Profile() {
               {/* Theme toggle button */}
               <ThemeToggle />
               {/* Notification bell */}
-              <Button variant="ghost" size="sm" onClick={() => setNotifOpen((o) => !o)}>
+              <Button variant="ghost" size="sm" onClick={() => {
+                setNotifOpen((o) => {
+                  if (!o) fetchNotifications();
+                  return !o;
+                });
+              }}>
                 <Bell className="h-4 w-4" />
-                {/* ...badge... */}
+                {notifications.some(n => !n.read) && (
+                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
               </Button>
               {user && (
                 <Link to={`/profile/${user.id}`}>
