@@ -1,32 +1,29 @@
 import { supabase } from './client';
 
 export async function likePost(postId: string, userId: string) {
-  // Insert like
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('likes')
-    .insert({ post_id: postId, user_id: userId })
-    .select();
+    .insert({ post_id: postId, user_id: userId });
 
   if (error) return { data: null, error };
 
-  // Fetch post author and liker info
   const [{ data: post }, { data: liker }] = await Promise.all([
     supabase.from('posts').select('author_id').eq('id', postId).single(),
     supabase.from('profiles').select('full_name').eq('user_id', userId).single()
   ]);
 
   if (post && liker && post.author_id !== userId) {
-    // Insert notification for post author
-    await supabase.from('notifications').insert({
+    const { error: notifError } = await supabase.from('notifications').insert({
       user_id: post.author_id,
       from_user_id: userId,
       type: 'like',
       post_id,
       message: `${liker.full_name} liked your post`
     });
+    if (notifError) return { data: null, error: notifError };
   }
 
-  return { data, error: null };
+  return { data: true, error: null };
 }
 
 export async function unlikePost(postId: string, userId: string) {
