@@ -51,3 +51,16 @@ export async function hasLiked(postId: string, userId: string) {
     .single();
   return !!data;
 }
+
+export async function getLikers(postId: string) {
+  const { data, error } = await supabase
+    .from('likes')
+    .select('user_id, profiles(full_name)')
+    .eq('post_id', postId);
+
+  if (error) {
+    console.error('Error fetching likers:', error);
+    return [];
+  }
+  return data || [];
+}

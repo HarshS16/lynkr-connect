@@ -7,6 +7,7 @@ import {
   unlikePost,
   getLikesCount,
   hasLiked,
+  getLikers,
 } from "@/integrations/supabase/likes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
 
@@ -30,19 +31,22 @@ export function LikeButton({ postId, userId }: LikeButtonProps) {
     let mounted = true;
     const fetchInitialState = async () => {
       try {
-        const [count, liked] = await Promise.all([
+        const [count, liked, likers] = await Promise.all([
           getLikesCount(postId),
           hasLiked(postId, userId),
+          getLikers(postId),
         ]);
         if (mounted) {
           setLikeCount(count);
           setIsLiked(liked);
+          setLikers(likers);
         }
       } catch (error) {
         console.error("Error fetching like state:", error);
         if (mounted) {
           setIsLiked(false);
           setLikeCount(0);
+          setLikers([]);
         }
       }
     };
@@ -114,11 +118,17 @@ export function LikeButton({ postId, userId }: LikeButtonProps) {
             <DialogTitle>People who liked this post</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            {likers.map((liker) => (
-              <div key={liker.user_id} className="flex items-center gap-2">
-                <span className="font-medium">{liker.profiles.full_name}</span>
-              </div>
-            ))}
+            {likers.length > 0 ? (
+              <ul>
+                {likers.map((liker) => (
+                  <li key={liker.user_id}>
+                    {liker.profiles?.full_name || "Unknown"}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div>No likes yet.</div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
