@@ -43,6 +43,12 @@ export default function Dashboard() {
   const [postsLoading, setPostsLoading] = useState(true);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    message: string;
+    created_at: string;
+    read: boolean;
+  }>[]>([]);
 
   useEffect(() => {
     fetchPosts();
@@ -51,6 +57,17 @@ export default function Dashboard() {
   useEffect(() => {
     if (user?.id) {
       getPendingRequests(user.id).then(({ data }) => setPendingRequests(data || []));
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      supabase
+        .from('notifications')
+        .select('id, message, created_at, read')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => setNotifications(data || []));
     }
   }, [user?.id]);
 
@@ -168,42 +185,44 @@ export default function Dashboard() {
               <div className="relative">
                 <Button variant="ghost" size="sm" onClick={() => setNotifOpen((o) => !o)}>
                   <Bell className="h-4 w-4" />
-                  {pendingRequests.length > 0 && (
+                  {(pendingRequests.length > 0 || notifications.length > 0) && (
                     <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                      {pendingRequests.length}
+                      {pendingRequests.length + notifications.length}
                     </span>
                   )}
                 </Button>
                 {notifOpen && (
-                  <div className="absolute right-0 mt-2 w-72 bg-white border rounded shadow-lg z-50">
+                  <div className="absolute right-0 mt-2 w-80 bg-white border rounded shadow-lg z-50">
                     <div className="p-4 font-semibold border-b">Notifications</div>
-                    {pendingRequests.length === 0 ? (
-                      <div className="p-4 text-sm text-gray-500">No new requests</div>
-                    ) : (
+                    {/* Connection Requests */}
+                    {pendingRequests.length > 0 && (
                       <ul>
                         {pendingRequests.map((req) => (
                           <li key={req.id} className="flex items-center justify-between p-4 border-b last:border-b-0">
                             <span>Connection request from {req.profiles?.full_name || 'a user'}</span>
                             <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleAccept(req.id)}
-                                className="ml-2"
-                              >
-                                Accept
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDecline(req.id)}
-                              >
-                                Decline
-                              </Button>
+                              <Button size="sm" onClick={() => handleAccept(req.id)} className="ml-2">Accept</Button>
+                              <Button size="sm" variant="destructive" onClick={() => handleDecline(req.id)}>Decline</Button>
                             </div>
                           </li>
                         ))}
                       </ul>
                     )}
+                    {/* Like and other notifications */}
+                    {notifications.length > 0 ? (
+                      <ul>
+                        {notifications.map((notif) => (
+                          <li key={notif.id} className="p-4 border-b last:border-b-0 text-sm">
+                            {notif.message}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : pendingRequests.length === 0 ? (
+                      <div className="p-4 text-sm text-gray-500">No new notifications</div>
+                    ) : null}
                   </div>
                 )}
               </div>

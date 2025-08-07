@@ -370,18 +370,49 @@ export default function Profile() {
             <div className="flex items-center gap-4">
               {/* Theme toggle button */}
               <ThemeToggle />
-              {/* Notification bell */}
-              <Button variant="ghost" size="sm" onClick={() => {
-                setNotifOpen((o) => {
-                  if (!o) fetchNotifications();
-                  return !o;
-                });
-              }}>
-                <Bell className="h-4 w-4" />
-                {notifications.some(n => !n.read) && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+              {/* Notification bell and dropdown */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setNotifOpen((o) => {
+                      if (!o) fetchNotifications();
+                      return !o;
+                    });
+                  }}
+                >
+                  <Bell className="h-4 w-4" />
+                  {notifications.some(n => !n.read) && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                  )}
+                </Button>
+                {notifOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white border rounded shadow-lg z-50">
+                    <div className="p-4 font-semibold border-b">Notifications</div>
+                    {notificationsLoading ? (
+                      <div className="p-4 text-sm text-gray-500">Loading...</div>
+                    ) : notifications.length > 0 ? (
+                      <ul>
+                        {notifications.map((notif) => (
+                          <li
+                            key={notif.id}
+                            className={`p-4 border-b last:border-b-0 text-sm cursor-pointer ${notif.read ? "text-gray-500" : "font-semibold"}`}
+                            onClick={() => markNotificationAsRead(notif.id)}
+                          >
+                            {notif.message}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="p-4 text-sm text-gray-500">No new notifications</div>
+                    )}
+                  </div>
                 )}
-              </Button>
+              </div>
               {user && (
                 <Link to={`/profile/${user.id}`}>
                   <Button variant="ghost" size="sm">
@@ -571,7 +602,7 @@ export default function Profile() {
                           </CardContent>
                         </Card>
                       ))
-                    )}
+                    }
                   </CardContent>
                 </Card>
               </div>
