@@ -26,15 +26,30 @@ export function LikeButton({ postId, userId }: LikeButtonProps) {
 
   // Fetch initial like state
   useEffect(() => {
+    let mounted = true;
     const fetchInitialState = async () => {
-      const [count, liked] = await Promise.all([
-        getLikesCount(postId),
-        hasLiked(postId, userId)
-      ]);
-      setLikeCount(count);
-      setIsLiked(liked);
+      try {
+        const [count, liked] = await Promise.all([
+          getLikesCount(postId),
+          hasLiked(postId, userId)
+        ]);
+        if (mounted) {
+          setLikeCount(count);
+          setIsLiked(liked);
+        }
+      } catch (error) {
+        console.error('Error fetching like state:', error);
+        if (mounted) {
+          setIsLiked(false);
+          setLikeCount(0);
+        }
+      }
     };
     fetchInitialState();
+    
+    return () => {
+      mounted = false;
+    };
   }, [postId, userId]);
 
   const handleLike = async () => {
