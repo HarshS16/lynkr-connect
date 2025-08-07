@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { FcGoogle } from "react-icons/fc";
 
 // Import Framer Motion
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,7 +33,7 @@ const staggerContainer = {
 };
 
 export default function Landing() {
-  const { user, signUp, signIn, resetPassword } = useAuth();
+  const { user, signUp, signIn, resetPassword, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -122,6 +123,18 @@ export default function Landing() {
       setForgotEmail('');
     }
     setForgotLoading(false);
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      toast({
+        title: "Google sign-in failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -242,6 +255,18 @@ export default function Landing() {
                             {loading ? 'Signing in...' : 'Sign In'}
                           </Button>
                         </form>
+                        {/* Google Sign-In Button */}
+                        <div className="mt-6">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full flex items-center justify-center gap-2"
+                            onClick={handleGoogleSignIn}
+                          >
+                            <FcGoogle className="h-5 w-5" />
+                            Sign in with Google
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   </TabsContent>
