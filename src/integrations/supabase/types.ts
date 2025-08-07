@@ -76,6 +76,45 @@ export type Database = {
         }
         Relationships: []
       }
+      connections: {
+        Row: {
+          id: string
+          requester_id: string
+          addressee_id: string
+          status: 'pending' | 'accepted' | 'declined'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          requester_id: string
+          addressee_id: string
+          status?: 'pending' | 'accepted' | 'declined'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          requester_id?: string
+          addressee_id?: string
+          status?: 'pending' | 'accepted' | 'declined'
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connections_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "connections_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
