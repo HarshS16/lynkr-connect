@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ import { ArrowLeft, Edit2, Save, X, LogOut, User, Bell } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LikeButton } from "@/components/ui/LikeButton";
 
 interface Profile {
   id: string;
@@ -57,7 +58,7 @@ export default function Profile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
-
+  const abortControllers = useRef<AbortController[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ full_name: "", bio: "" });
@@ -72,10 +73,27 @@ export default function Profile() {
   const isOwnProfile = user?.id === userId;
 
   useEffect(() => {
+    // Cleanup any pending requests if component unmounts
+    return () => {
+      abortControllers.current.forEach(controller => controller.abort());
+      abortControllers.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
     if (userId) {
-      fetchProfile();
-      fetchUserPosts();
-      fetchConnections();
+      // Cancel any pending requests
+      abortControllers.current.forEach(controller => controller.abort());
+      abortControllers.current = [];
+
+      const controller1 = new AbortController();
+      const controller2 = new AbortController();
+      const controller3 = new AbortController();
+      abortControllers.current.push(controller1, controller2, controller3);
+
+      fetchProfile({ signal: controller1.signal });
+      fetchUserPosts({ signal: controller2.signal });
+      fetchConnections({ signal: controller3.signal });
     }
   }, [userId, user?.id]);
 
@@ -106,12 +124,13 @@ export default function Profile() {
     }
   };
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (options: { signal?: AbortSignal } = {}) => {
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
+        .abortSignal(options.signal)
         .single();
 
       if (error) throw error;
@@ -129,12 +148,13 @@ export default function Profile() {
     }
   };
 
-  const fetchUserPosts = async () => {
+  const fetchUserPosts = async (options: { signal?: AbortSignal } = {}) => {
     try {
       const { data, error } = await supabase
         .from("posts")
         .select("*")
         .eq("author_id", userId)
+        .abortSignal(options.signal)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -481,6 +501,12 @@ export default function Profile() {
                               <p className="whitespace-pre-wrap">
                                 {post.content}
                               </p>
+                              <div className="mt-4">
+                                <LikeButton
+                                  postId={post.id}
+                                  userId={user?.id || ''}
+                                />
+                              </div>
                               {/* Delete button for own posts */}
                               {isOwnProfile && (
                                 <Button

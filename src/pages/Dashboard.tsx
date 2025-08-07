@@ -13,12 +13,12 @@ import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LikeButton } from '@/components/ui/LikeButton';
 
 interface Post {
   id: string;
   content: string;
   created_at: string;
-  image_url?: string;
   profiles: {
     full_name: string;
     user_id: string;
@@ -28,8 +28,8 @@ interface Post {
 interface PendingRequest {
   id: string;
   requester_id: string;
-  created_at: string;
-  profiles: {
+  created_at?: string;
+  profiles?: {
     full_name: string;
   };
 }
@@ -41,7 +41,6 @@ export default function Dashboard() {
   const [newPost, setNewPost] = useState('');
   const [loading, setLoading] = useState(false);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
 
@@ -63,7 +62,6 @@ export default function Dashboard() {
           id,
           content,
           created_at,
-          image_url,
           profiles:profiles!posts_author_id_fkey (
             full_name,
             user_id
@@ -99,37 +97,16 @@ export default function Dashboard() {
         throw new Error("User session not found. Please sign in again.");
       }
 
-      let imageUrl: string | null = null;
-
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${sessionUser.id}_${Date.now()}.${fileExt}`;
-
-        const { error: uploadError } = await supabase
-          .storage
-          .from('post-images')
-          .upload(fileName, imageFile);
-
-        if (uploadError) throw uploadError;
-
-        imageUrl = supabase
-          .storage
-          .from('post-images')
-          .getPublicUrl(fileName).data.publicUrl;
-      }
-
       const { error } = await supabase
         .from('posts')
         .insert({
           content: newPost.trim(),
           author_id: sessionUser.id,
-          image_url: imageUrl
         });
 
       if (error) throw error;
 
       setNewPost('');
-      setImageFile(null);
       toast({
         title: "Success",
         description: "Your post has been shared!"
@@ -163,7 +140,7 @@ export default function Dashboard() {
   };
 
   const handleDecline = async (connectionId: string) => {
-    await respondToRequest(connectionId, 'declined');
+    await respondToRequest(connectionId, 'rejected');
     setPendingRequests((prev) => prev.filter((req) => req.id !== connectionId));
     toast({ title: "Connection declined." });
   };
@@ -265,21 +242,6 @@ export default function Dashboard() {
                 rows={4}
                 className="resize-none"
               />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm"
-              />
-              {imageFile && (
-                <div className="mt-2">
-                  <img
-                    src={URL.createObjectURL(imageFile)}
-                    alt="Preview"
-                    className="max-h-40 rounded border"
-                  />
-                </div>
-              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
                   {newPost.length}/1000 characters
@@ -334,16 +296,15 @@ export default function Dashboard() {
                         {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                       </span>
                     </div>
-                    {post.image_url && (
-                      <img
-                        src={post.image_url}
-                        alt="Post"
-                        className="max-h-60 rounded border mb-2"
-                      />
-                    )}
                     <p className="leading-relaxed whitespace-pre-wrap">
                       {post.content}
                     </p>
+                    <div className="mt-4">
+                      <LikeButton 
+                        postId={post.id} 
+                        userId={user?.id || ''} 
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
