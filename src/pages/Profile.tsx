@@ -602,7 +602,7 @@ export default function Profile() {
                           </CardContent>
                         </Card>
                       ))
-                    }
+                    )
                   </CardContent>
                 </Card>
               </div>
