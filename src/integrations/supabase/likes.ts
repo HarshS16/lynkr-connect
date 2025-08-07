@@ -55,7 +55,7 @@ export async function hasLiked(postId: string, userId: string) {
 export async function getLikers(postId: string) {
   const { data, error } = await supabase
     .from('likes')
-    .select('user_id, profiles(full_name)')
+    .select('user_id, profiles(full_name, avatar_url)')
     .eq('post_id', postId);
 
   if (error) {

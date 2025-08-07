@@ -10,6 +10,8 @@ import {
   getLikers,
 } from "@/integrations/supabase/likes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog";
+import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 
 interface LikeButtonProps {
   postId: string;
@@ -122,7 +124,26 @@ export function LikeButton({ postId, userId }: LikeButtonProps) {
               <ul>
                 {likers.map((liker) => (
                   <li key={liker.user_id}>
-                    {liker.profiles?.full_name || "Unknown"}
+                    <Link
+                      to={`/profile/${liker.user_id}`}
+                      className="flex items-center gap-2 hover:bg-accent px-2 py-1 rounded transition"
+                      onClick={() => setDialogOpen(false)}
+                    >
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage
+                          src={liker.profiles?.avatar_url || ""}
+                          alt={liker.profiles?.full_name || "User"}
+                        />
+                        <AvatarFallback>
+                          {liker.profiles?.full_name
+                            ? liker.profiles.full_name[0]
+                            : "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">
+                        {liker.profiles?.full_name || "Unknown"}
+                      </span>
+                    </Link>
                   </li>
                 ))}
               </ul>
