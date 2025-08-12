@@ -7,20 +7,28 @@ export async function likePost(postId: string, userId: string) {
 
   if (error) return { data: null, error };
 
-  const [{ data: post }, { data: liker }] = await Promise.all([
-    supabase.from('posts').select('author_id').eq('id', postId).single(),
-    supabase.from('profiles').select('full_name').eq('user_id', userId).single()
-  ]);
+  try {
+    const [{ data: post }, { data: liker }] = await Promise.all([
+      supabase.from('posts').select('author_id').eq('id', postId).single(),
+      supabase.from('profiles').select('full_name').eq('user_id', userId).single()
+    ]);
 
-  if (post && liker && post.author_id !== userId) {
-    const { error: notifError } = await supabase.from('notifications').insert({
-      user_id: post.author_id,
-      from_user_id: userId,
-      type: 'like',
-      post_id,
-      message: `${liker.full_name} liked your post`
-    });
-    if (notifError) return { data: null, error: notifError };
+    if (post && liker && post.author_id !== userId) {
+      const { error: notifError } = await supabase.from('notifications').insert({
+        user_id: post.author_id,
+        from_user_id: userId,
+        type: 'like',
+        post_id,
+        message: `${liker.full_name} liked your post`
+      });
+      if (notifError) {
+        console.error('Error creating notification:', notifError);
+        // Don't fail the like if notification fails
+      }
+    }
+  } catch (notifError) {
+    console.error('Error creating notification:', notifError);
+    // Don't fail the like if notification fails
   }
 
   return { data: true, error: null };

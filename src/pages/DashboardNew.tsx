@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { likePost, unlikePost, getLikesCount, hasLiked } from '@/integrations/supabase/likes';
+import { createComment, getComments, getCommentsCount } from '@/integrations/supabase/comments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -203,6 +205,9 @@ interface Post {
     full_name: string;
     user_id: string;
   };
+  likes_count?: number;
+  comments_count?: number;
+  user_has_liked?: boolean;
 }
 
 interface Notification {
@@ -226,6 +231,10 @@ export default function Dashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userPostsCount, setUserPostsCount] = useState(0);
+  const [showComments, setShowComments] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState('');
+  const [postComments, setPostComments] = useState<{[key: string]: any[]}>({});
+  const [postLikes, setPostLikes] = useState<{[key: string]: {count: number, userLiked: boolean}}>({});
 
   useEffect(() => {
     fetchPosts();
@@ -255,7 +264,14 @@ export default function Dashboard() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPosts(data || []);
+
+      const postsData = data || [];
+      setPosts(postsData);
+
+      // Fetch likes and comments data for each post
+      if (user?.id && postsData.length > 0) {
+        await fetchPostsInteractions(postsData);
+      }
     } catch (error) {
       console.error('Error fetching posts:', error);
       toast({
@@ -299,6 +315,33 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching user posts count:', error);
     }
+  };
+
+  const fetchPostsInteractions = async (posts: Post[]) => {
+    if (!user?.id) return;
+
+    const likesData: {[key: string]: {count: number, userLiked: boolean}} = {};
+    const commentsData: {[key: string]: any[]} = {};
+
+    await Promise.all(posts.map(async (post) => {
+      try {
+        const [likesCount, userLiked, comments] = await Promise.all([
+          getLikesCount(post.id),
+          hasLiked(post.id, user.id),
+          getComments(post.id)
+        ]);
+
+        likesData[post.id] = { count: likesCount, userLiked };
+        commentsData[post.id] = comments;
+      } catch (error) {
+        console.error(`Error fetching interactions for post ${post.id}:`, error);
+        likesData[post.id] = { count: 0, userLiked: false };
+        commentsData[post.id] = [];
+      }
+    }));
+
+    setPostLikes(likesData);
+    setPostComments(commentsData);
   };
 
   const handleCreatePost = async (e: React.FormEvent) => {
@@ -351,6 +394,70 @@ export default function Dashboard() {
       title: "Signed out",
       description: "You have been successfully signed out"
     });
+  };
+
+  const handleLike = async (postId: string) => {
+    if (!user?.id) return;
+
+    try {
+      const currentLike = postLikes[postId];
+      const isLiked = currentLike?.userLiked || false;
+
+      if (isLiked) {
+        await unlikePost(postId, user.id);
+        setPostLikes(prev => ({
+          ...prev,
+          [postId]: {
+            count: Math.max(0, (prev[postId]?.count || 0) - 1),
+            userLiked: false
+          }
+        }));
+      } else {
+        await likePost(postId, user.id);
+        setPostLikes(prev => ({
+          ...prev,
+          [postId]: {
+            count: (prev[postId]?.count || 0) + 1,
+            userLiked: true
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error handling like:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update like",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleComment = async (postId: string) => {
+    if (!user?.id || !newComment.trim()) return;
+
+    try {
+      await createComment(postId, user.id, newComment);
+
+      // Refresh comments for this post
+      const comments = await getComments(postId);
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: comments
+      }));
+
+      setNewComment('');
+      toast({
+        title: "Success",
+        description: "Comment added successfully!"
+      });
+    } catch (error) {
+      console.error('Error creating comment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add comment",
+        variant: "destructive"
+      });
+    }
   };
 
   const sidebarItems = [
@@ -759,17 +866,27 @@ export default function Dashboard() {
                                 <div className="flex items-center gap-6 text-blue-700/70">
                                   <motion.button
                                     whileHover={{ scale: 1.05 }}
-                                    className="flex items-center gap-2 hover:text-red-500 transition-colors"
+                                    onClick={() => handleLike(post.id)}
+                                    className={`flex items-center gap-2 transition-colors ${
+                                      postLikes[post.id]?.userLiked
+                                        ? 'text-red-500'
+                                        : 'hover:text-red-500'
+                                    }`}
                                   >
-                                    <Heart className="h-4 w-4" />
-                                    <span className="text-sm">Like</span>
+                                    <Heart className={`h-4 w-4 ${postLikes[post.id]?.userLiked ? 'fill-current' : ''}`} />
+                                    <span className="text-sm">
+                                      {postLikes[post.id]?.count || 0} {postLikes[post.id]?.count === 1 ? 'Like' : 'Likes'}
+                                    </span>
                                   </motion.button>
                                   <motion.button
                                     whileHover={{ scale: 1.05 }}
+                                    onClick={() => setShowComments(showComments === post.id ? null : post.id)}
                                     className="flex items-center gap-2 hover:text-blue-600 transition-colors"
                                   >
                                     <MessageSquare className="h-4 w-4" />
-                                    <span className="text-sm">Comment</span>
+                                    <span className="text-sm">
+                                      {postComments[post.id]?.length || 0} {postComments[post.id]?.length === 1 ? 'Comment' : 'Comments'}
+                                    </span>
                                   </motion.button>
                                   <motion.button
                                     whileHover={{ scale: 1.05 }}
@@ -785,6 +902,83 @@ export default function Dashboard() {
                                     <Bookmark className="h-4 w-4" />
                                   </motion.button>
                                 </div>
+
+                                {/* Comments Section */}
+                                <AnimatePresence>
+                                  {showComments === post.id && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.3 }}
+                                      className="mt-4 pt-4 border-t border-white/20"
+                                    >
+                                      {/* Add Comment Form */}
+                                      <div className="flex gap-3 mb-4">
+                                        <Avatar className="h-8 w-8 border border-white/30">
+                                          <AvatarImage src={user?.user_metadata?.avatar_url} />
+                                          <AvatarFallback className="bg-blue-600/90 text-white text-xs">
+                                            {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 flex gap-2">
+                                          <Input
+                                            placeholder="Write a comment..."
+                                            value={newComment}
+                                            onChange={(e) => setNewComment(e.target.value)}
+                                            className="border-white/30 bg-white/20 backdrop-blur-sm focus:border-blue-500 focus:bg-white/30 text-blue-900 placeholder:text-blue-700/50"
+                                            onKeyPress={(e) => {
+                                              if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleComment(post.id);
+                                              }
+                                            }}
+                                          />
+                                          <Button
+                                            onClick={() => handleComment(post.id)}
+                                            disabled={!newComment.trim()}
+                                            size="sm"
+                                            className="bg-blue-600/90 hover:bg-blue-700/90"
+                                          >
+                                            Post
+                                          </Button>
+                                        </div>
+                                      </div>
+
+                                      {/* Comments List */}
+                                      <div className="space-y-3 max-h-60 overflow-y-auto">
+                                        {postComments[post.id]?.map((comment: any) => (
+                                          <motion.div
+                                            key={comment.id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="flex gap-3"
+                                          >
+                                            <Avatar className="h-8 w-8 border border-white/30">
+                                              <AvatarImage src={comment.profiles?.avatar_url} />
+                                              <AvatarFallback className="bg-blue-600/90 text-white text-xs">
+                                                {comment.profiles?.full_name?.charAt(0) || 'U'}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1">
+                                              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <span className="font-medium text-blue-900 text-sm">
+                                                    {comment.profiles?.full_name}
+                                                  </span>
+                                                  <span className="text-xs text-blue-700/70">
+                                                    {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                                                  </span>
+                                                </div>
+                                                <p className="text-blue-900 text-sm">{comment.content}</p>
+                                              </div>
+                                            </div>
+                                          </motion.div>
+                                        ))}
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </div>
                             </div>
                           </CardContent>
