@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { formatDistanceToNow } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,7 +30,10 @@ import {
   Briefcase,
   Calendar,
   Camera,
-  Edit3
+  Edit3,
+  Menu,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 // Three.js Background Component
@@ -220,10 +224,13 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [userPostsCount, setUserPostsCount] = useState(0);
 
   useEffect(() => {
     fetchPosts();
     fetchNotifications();
+    fetchUserPostsCount();
   }, []);
 
   useEffect(() => {
@@ -261,7 +268,7 @@ export default function Dashboard() {
 
   const fetchNotifications = async () => {
     if (!user?.id) return;
-    
+
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
@@ -272,6 +279,25 @@ export default function Dashboard() {
       console.error('Error fetching notifications:', error);
     } else {
       setNotifications(data || []);
+    }
+  };
+
+  const fetchUserPostsCount = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { count, error } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('author_id', user.id);
+
+      if (error) {
+        console.error('Error fetching user posts count:', error);
+      } else {
+        setUserPostsCount(count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching user posts count:', error);
     }
   };
 
@@ -306,6 +332,7 @@ export default function Dashboard() {
       });
 
       fetchPosts();
+      fetchUserPostsCount(); // Update user posts count
     } catch (error: any) {
       console.error('Error creating post:', error);
       toast({
@@ -352,6 +379,16 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
+              {/* Sidebar Toggle */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="p-2 bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30 rounded-lg transition-all"
+              >
+                <Menu className="h-5 w-5" />
+              </motion.button>
+
               <motion.h1
                 whileHover={{ scale: 1.05 }}
                 className="text-3xl font-bold text-blue-900 tracking-tight drop-shadow-sm"
@@ -390,6 +427,13 @@ export default function Dashboard() {
                     </span>
                   )}
                 </Button>
+              </motion.div>
+
+              {/* Theme Toggle */}
+              <motion.div whileHover={{ scale: 1.05 }}>
+                <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-md">
+                  <ThemeToggle />
+                </div>
               </motion.div>
 
               {/* Create Post Button */}
@@ -441,24 +485,29 @@ export default function Dashboard() {
         {/* Sidebar */}
         <motion.aside
           initial={{ x: -300 }}
-          animate={{ x: 0 }}
+          animate={{
+            x: 0,
+            width: sidebarCollapsed ? 80 : 320
+          }}
           transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-          className="w-80 backdrop-blur-xl bg-white/10 border-r border-white/20 shadow-lg flex flex-col"
+          className={`${sidebarCollapsed ? 'w-20' : 'w-80'} backdrop-blur-xl bg-white/10 border-r border-white/20 shadow-lg flex flex-col transition-all duration-300`}
         >
           <div className="p-6 border-b border-white/20">
-            <div className="flex items-center gap-4">
+            <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-4'}`}>
               <Avatar className="h-12 w-12 border-2 border-white/30">
                 <AvatarImage src={user?.user_metadata?.avatar_url} />
                 <AvatarFallback className="bg-blue-600/90 text-white">
                   {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <h3 className="font-semibold text-blue-900">
-                  {user?.user_metadata?.full_name || 'User'}
-                </h3>
-                <p className="text-sm text-blue-700/70">{user?.email}</p>
-              </div>
+              {!sidebarCollapsed && (
+                <div>
+                  <h3 className="font-semibold text-blue-900">
+                    {user?.user_metadata?.full_name || 'User'}
+                  </h3>
+                  <p className="text-sm text-blue-700/70">{user?.email}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -476,16 +525,26 @@ export default function Dashboard() {
                     key={item.id}
                     variants={fadeInUp}
                     onClick={() => setActiveTab(index)}
-                    className={`flex items-center gap-3 w-full p-4 rounded-xl transition-all duration-300 ${
+                    className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} w-full p-4 rounded-xl transition-all duration-300 relative ${
                       activeTab === index
                         ? 'bg-blue-600/90 backdrop-blur-sm text-white shadow-lg'
                         : 'text-blue-900/70 hover:text-blue-900 hover:bg-white/20'
                     }`}
+                    title={sidebarCollapsed ? item.label : undefined}
                   >
                     <Icon className="h-5 w-5" />
-                    <span className="font-medium">{item.label}</span>
-                    {item.label === 'Notifications' && unreadCount > 0 && (
-                      <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className="font-medium">{item.label}</span>
+                        {item.label === 'Notifications' && unreadCount > 0 && (
+                          <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </>
+                    )}
+                    {sidebarCollapsed && item.label === 'Notifications' && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                         {unreadCount}
                       </span>
                     )}
@@ -496,17 +555,39 @@ export default function Dashboard() {
           </nav>
 
           {/* Quick Stats */}
-          <div className="p-4 border-t border-white/20">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30">
-                <div className="text-lg font-bold text-blue-900">{posts.length}</div>
-                <div className="text-xs text-blue-700/70">Posts</div>
-              </div>
-              <div className="text-center p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30">
-                <div className="text-lg font-bold text-blue-900">{notifications.length}</div>
-                <div className="text-xs text-blue-700/70">Updates</div>
+          {!sidebarCollapsed && (
+            <div className="p-4 border-t border-white/20">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30">
+                  <div className="text-lg font-bold text-blue-900">{userPostsCount}</div>
+                  <div className="text-xs text-blue-700/70">My Posts</div>
+                </div>
+                <div className="text-center p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30">
+                  <div className="text-lg font-bold text-blue-900">{notifications.length}</div>
+                  <div className="text-xs text-blue-700/70">Updates</div>
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Collapse Toggle Button */}
+          <div className="p-4 border-t border-white/20">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} w-full p-3 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30 transition-all`}
+              title={sidebarCollapsed ? (sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar') : undefined}
+            >
+              {sidebarCollapsed ? (
+                <ChevronRight className="h-5 w-5" />
+              ) : (
+                <>
+                  <ChevronLeft className="h-5 w-5" />
+                  <span className="font-medium">Collapse</span>
+                </>
+              )}
+            </motion.button>
           </div>
         </motion.aside>
 
