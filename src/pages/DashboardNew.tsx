@@ -489,8 +489,13 @@ export default function Dashboard() {
             x: 0,
             width: sidebarCollapsed ? 80 : 320
           }}
-          transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-          className={`${sidebarCollapsed ? 'w-20' : 'w-80'} backdrop-blur-xl bg-white/10 border-r border-white/20 shadow-lg flex flex-col transition-all duration-300`}
+          transition={{
+            type: 'spring',
+            stiffness: 300,
+            damping: 30,
+            duration: 0.3
+          }}
+          className={`${sidebarCollapsed ? 'w-20' : 'w-80'} backdrop-blur-xl bg-white/10 border-r border-white/20 shadow-lg flex flex-col transition-all duration-150`}
         >
           <div className="p-6 border-b border-white/20">
             <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-4'}`}>
@@ -500,14 +505,21 @@ export default function Dashboard() {
                   {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </AvatarFallback>
               </Avatar>
-              {!sidebarCollapsed && (
-                <div>
-                  <h3 className="font-semibold text-blue-900">
-                    {user?.user_metadata?.full_name || 'User'}
-                  </h3>
-                  <p className="text-sm text-blue-700/70">{user?.email}</p>
-                </div>
-              )}
+              <AnimatePresence>
+                {!sidebarCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <h3 className="font-semibold text-blue-900">
+                      {user?.user_metadata?.full_name || 'User'}
+                    </h3>
+                    <p className="text-sm text-blue-700/70">{user?.email}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -525,7 +537,7 @@ export default function Dashboard() {
                     key={item.id}
                     variants={fadeInUp}
                     onClick={() => setActiveTab(index)}
-                    className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} w-full p-4 rounded-xl transition-all duration-300 relative ${
+                    className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} w-full p-4 rounded-xl transition-all duration-150 relative ${
                       activeTab === index
                         ? 'bg-blue-600/90 backdrop-blur-sm text-white shadow-lg'
                         : 'text-blue-900/70 hover:text-blue-900 hover:bg-white/20'
@@ -533,16 +545,24 @@ export default function Dashboard() {
                     title={sidebarCollapsed ? item.label : undefined}
                   >
                     <Icon className="h-5 w-5" />
-                    {!sidebarCollapsed && (
-                      <>
-                        <span className="font-medium">{item.label}</span>
-                        {item.label === 'Notifications' && unreadCount > 0 && (
-                          <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                            {unreadCount}
-                          </span>
-                        )}
-                      </>
-                    )}
+                    <AnimatePresence>
+                      {!sidebarCollapsed && (
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          transition={{ duration: 0.15 }}
+                          className="flex items-center justify-between flex-1"
+                        >
+                          <span className="font-medium">{item.label}</span>
+                          {item.label === 'Notifications' && unreadCount > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                              {unreadCount}
+                            </span>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     {sidebarCollapsed && item.label === 'Notifications' && unreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                         {unreadCount}
@@ -579,14 +599,31 @@ export default function Dashboard() {
               className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} w-full p-3 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30 transition-all`}
               title={sidebarCollapsed ? (sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar') : undefined}
             >
-              {sidebarCollapsed ? (
-                <ChevronRight className="h-5 w-5" />
-              ) : (
-                <>
-                  <ChevronLeft className="h-5 w-5" />
-                  <span className="font-medium">Collapse</span>
-                </>
-              )}
+              <AnimatePresence mode="wait">
+                {sidebarCollapsed ? (
+                  <motion.div
+                    key="expand"
+                    initial={{ opacity: 0, rotate: -90 }}
+                    animate={{ opacity: 1, rotate: 0 }}
+                    exit={{ opacity: 0, rotate: 90 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="collapse"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex items-center gap-3"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                    <span className="font-medium">Collapse</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.button>
           </div>
         </motion.aside>
