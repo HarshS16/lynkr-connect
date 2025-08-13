@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { ThreeBackground } from '@/components/ThreeBackground';
 import {
   Search,
   Users,
@@ -15,7 +17,12 @@ import {
   UserCheck,
   UserX,
   Filter,
-  ArrowLeft
+  ArrowLeft,
+  Bell,
+  Plus,
+  User,
+  LogOut,
+  Menu
 } from 'lucide-react';
 
 interface Profile {
@@ -51,20 +58,39 @@ const staggerContainer = {
 };
 
 export default function Network() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [pendingRequests, setPendingRequests] = useState<Connection[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [connectionStatuses, setConnectionStatuses] = useState<{[key: string]: string}>({});
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchProfiles();
     fetchConnections();
     fetchPendingRequests();
+    loadConnectionStatuses();
   }, [user]);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive"
+      });
+    }
+  };
 
   const fetchProfiles = async () => {
     try {
@@ -126,12 +152,51 @@ export default function Network() {
     }
   };
 
+  const loadConnectionStatuses = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('connections')
+        .select('addressee_id, status')
+        .eq('requester_id', user.id);
+
+      if (error) throw error;
+
+      const statuses: {[key: string]: string} = {};
+      data?.forEach(connection => {
+        statuses[connection.addressee_id] = connection.status;
+      });
+      setConnectionStatuses(statuses);
+    } catch (error) {
+      console.error('Error loading connection statuses:', error);
+    }
+  };
+
   const sendConnectionRequest = async (addresseeId: string) => {
     if (!user?.id) return;
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      // Check if connection already exists
+      const { data: existingConnection } = await supabase
+        .from('connections')
+        .select('id')
+        .or(`and(requester_id.eq.${user.id},addressee_id.eq.${addresseeId}),and(requester_id.eq.${addresseeId},addressee_id.eq.${user.id})`)
+        .single();
+
+      if (existingConnection) {
+        toast({
+          title: "Info",
+          description: "Connection request already exists",
+          variant: "default"
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Insert connection request
+      const { error: connectionError } = await supabase
         .from('connections')
         .insert({
           requester_id: user.id,
@@ -139,7 +204,22 @@ export default function Network() {
           status: 'pending'
         });
 
-      if (error) throw error;
+      if (connectionError) throw connectionError;
+
+      // Send notification
+      try {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: addresseeId,
+            from_user_id: user.id,
+            type: 'connection_request',
+            message: `${user.user_metadata?.full_name || 'Someone'} sent you a connection request`
+          });
+      } catch (notificationError) {
+        console.error('Error sending notification:', notificationError);
+        // Don't fail the whole operation if notification fails
+      }
 
       setConnectionStatuses(prev => ({
         ...prev,
@@ -220,10 +300,126 @@ export default function Network() {
 
   return (
     <div className="min-h-screen bg-gray-50 relative overflow-hidden">
+      {/* Three.js Background */}
+      <ThreeBackground />
+
       {/* Background Gradient Overlay */}
       <div className="fixed inset-0 bg-gradient-to-br from-blue-50/30 via-white/20 to-blue-100/30 -z-5"></div>
 
-      <div className="flex h-screen">
+      {/* Header */}
+      <motion.header
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+        className="backdrop-blur-xl bg-white/10 border-b border-white/20 shadow-lg z-20 sticky top-0"
+      >
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              {/* Back Button */}
+              <Link to="/dashboard">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="p-2 bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30 rounded-lg transition-all"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </motion.button>
+              </Link>
+
+              <motion.h1
+                whileHover={{ scale: 1.05 }}
+                className="text-3xl font-bold text-blue-900 tracking-tight drop-shadow-sm"
+              >
+                Lynkr
+              </motion.h1>
+
+              {/* Search Bar */}
+              <div className="hidden md:flex relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-600 h-4 w-4" />
+                <Input
+                  placeholder="Search people..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-80 border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900 placeholder:text-blue-700/50"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Notification Bell */}
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                className="relative"
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30"
+                >
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </motion.div>
+
+              {/* Theme Toggle */}
+              <motion.div whileHover={{ scale: 1.05 }}>
+                <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-md">
+                  <ThemeToggle />
+                </div>
+              </motion.div>
+
+              {/* Create Post Button */}
+              <motion.div whileHover={{ scale: 1.05 }}>
+                <Button
+                  onClick={() => setShowCreatePost(true)}
+                  className="bg-blue-600/90 backdrop-blur-sm text-white hover:bg-blue-700/90 border border-white/30"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Post
+                </Button>
+              </motion.div>
+
+              {/* Profile Link */}
+              {user && (
+                <Link to={`/profile/${user.id}`}>
+                  <motion.div whileHover={{ scale: 1.05 }}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Button>
+                  </motion.div>
+                </Link>
+              )}
+
+              {/* Sign Out */}
+              <motion.div whileHover={{ scale: 1.05 }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </motion.header>
+
+      {/* Main Layout */}
+      <div className="flex h-screen pt-20">
         {/* Left Sidebar - Connections */}
         <motion.aside 
           initial={{ x: -300 }}
@@ -233,25 +429,7 @@ export default function Network() {
         >
           {/* Header */}
           <div className="p-6 border-b border-white/20">
-            <div className="flex items-center gap-3 mb-4">
-              <Link to="/dashboard">
-                <Button variant="ghost" size="sm" className="text-blue-900 hover:bg-white/20">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <h2 className="text-xl font-bold text-blue-900">Network</h2>
-            </div>
-            
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-600 h-4 w-4" />
-              <Input
-                placeholder="Search connections..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900 placeholder:text-blue-700/50"
-              />
-            </div>
+            <h2 className="text-xl font-bold text-blue-900 mb-4">My Network</h2>
           </div>
 
           {/* Pending Requests */}
@@ -384,15 +562,17 @@ export default function Network() {
                     <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/20 overflow-hidden">
                       <CardContent className="p-6 text-center">
                         {/* Profile Picture */}
-                        <div className="relative mb-4">
-                          <Avatar className="h-20 w-20 mx-auto border-2 border-white/30 shadow-lg">
-                            <AvatarImage src={profile.avatar_url} />
-                            <AvatarFallback className="bg-blue-600/90 text-white text-xl font-semibold">
-                              {profile.full_name?.charAt(0) || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-green-500 border-2 border-white rounded-full"></div>
-                        </div>
+                        <Link to={`/profile/${profile.user_id}`}>
+                          <div className="relative mb-4 cursor-pointer">
+                            <Avatar className="h-20 w-20 mx-auto border-2 border-white/30 shadow-lg hover:border-blue-400 transition-colors">
+                              <AvatarImage src={profile.avatar_url} />
+                              <AvatarFallback className="bg-blue-600/90 text-white text-xl font-semibold">
+                                {profile.full_name?.charAt(0) || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-green-500 border-2 border-white rounded-full"></div>
+                          </div>
+                        </Link>
 
                         {/* Name */}
                         <Link to={`/profile/${profile.user_id}`}>
