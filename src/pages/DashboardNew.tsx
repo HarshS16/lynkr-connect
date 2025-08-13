@@ -322,6 +322,11 @@ export default function Dashboard() {
   const handleSidebarClick = (index: number, label: string) => {
     if (label === 'Network') {
       navigate('/network');
+    } else if (label === 'Jobs') {
+      navigate('/jobs');
+    } else if (label === 'Notifications') {
+      setShowNotifications(!showNotifications);
+      setActiveTab(index);
     } else {
       setActiveTab(index);
     }
@@ -656,6 +661,7 @@ export default function Dashboard() {
 
                 <motion.div
                   whileHover={{ scale: 1.02 }}
+                  onClick={() => navigate('/jobs')}
                   className="p-6 bg-white/30 backdrop-blur-sm rounded-2xl border border-white/30 shadow-lg hover:shadow-xl transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-4">

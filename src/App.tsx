@@ -9,6 +9,7 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/DashboardNew";
 import Profile from "./pages/Profile";
 import Network from "./pages/Network";
+import Jobs from "./pages/Jobs";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/reset-password";
 
@@ -37,6 +38,11 @@ const App = () => (
             <Route path="/network" element={
               <ProtectedRoute>
                 <Network />
+              </ProtectedRoute>
+            } />
+            <Route path="/jobs" element={
+              <ProtectedRoute>
+                <Jobs />
               </ProtectedRoute>
             } />
             <Route path="/reset-password" element={<ResetPassword />} />
