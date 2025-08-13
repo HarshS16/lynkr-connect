@@ -118,32 +118,72 @@ All colors MUST be HSL.
 .theme-toggle svg {
   transition: color 0.2s;
 }
-body.dark {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
+/* Dark mode base styles */
+.dark,
+.dark body,
+html.dark,
+html.dark body {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
-/* Dark mode specific styles for glassmorphism */
+/* Ensure dark mode applies to all backgrounds */
 .dark {
-  /* Override glassmorphism backgrounds for dark mode */
+  background-color: hsl(222.2 84% 4.9%) !important;
+  color: hsl(210 40% 98%) !important;
 }
 
+/* Dark mode for main page backgrounds */
+.dark .min-h-screen {
+  background: hsl(222.2 84% 4.9%) !important;
+}
+
+.dark .bg-gray-50 {
+  background: hsl(222.2 84% 4.9%) !important;
+}
+
+.dark .bg-white {
+  background: hsl(222.2 84% 7%) !important;
+}
+
+.dark .bg-blue-50 {
+  background: hsl(222.2 84% 6%) !important;
+}
+
+.dark .bg-gradient-to-br {
+  background: linear-gradient(to bottom right, hsl(222.2 84% 4.9%), hsl(222.2 84% 6%)) !important;
+}
+
+/* Dark mode for glassmorphism backgrounds */
 .dark .backdrop-blur-xl {
-  background-color: rgba(15, 23, 42, 0.3) !important;
+  background-color: rgba(15, 23, 42, 0.8) !important;
 }
 
 .dark .bg-white\/10 {
-  background-color: rgba(15, 23, 42, 0.4) !important;
-}
-
-.dark .bg-white\/20 {
-  background-color: rgba(15, 23, 42, 0.5) !important;
-}
-
-.dark .bg-white\/30 {
   background-color: rgba(15, 23, 42, 0.6) !important;
 }
 
+.dark .bg-white\/20 {
+  background-color: rgba(15, 23, 42, 0.7) !important;
+}
+
+.dark .bg-white\/30 {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+.dark .bg-white\/60 {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+}
+
+.dark .bg-white\/70 {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+.dark .bg-white\/80 {
+  background-color: rgba(15, 23, 42, 0.98) !important;
+}
+
+/* Dark mode borders */
 .dark .border-white\/20 {
   border-color: rgba(71, 85, 105, 0.3) !important;
 }
@@ -152,10 +192,153 @@ body.dark {
   border-color: rgba(71, 85, 105, 0.4) !important;
 }
 
+.dark .border-blue-200\/50 {
+  border-color: rgba(71, 85, 105, 0.3) !important;
+}
+
+.dark .border-blue-300 {
+  border-color: rgba(71, 85, 105, 0.5) !important;
+}
+
+/* Dark mode text colors */
 .dark .text-blue-900 {
   color: rgb(219, 234, 254) !important;
 }
 
 .dark .text-blue-700 {
   color: rgb(191, 219, 254) !important;
+}
+
+.dark .text-blue-700\/70 {
+  color: rgba(191, 219, 254, 0.7) !important;
+}
+
+.dark .text-blue-900\/70 {
+  color: rgba(219, 234, 254, 0.7) !important;
+}
+
+.dark .text-gray-600 {
+  color: rgb(156, 163, 175) !important;
+}
+
+.dark .text-gray-800 {
+  color: rgb(209, 213, 219) !important;
+}
+
+/* Dark mode for specific components */
+.dark .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .shadow-xl {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Dark mode for buttons */
+.dark .bg-blue-600 {
+  background-color: rgb(37, 99, 235) !important;
+}
+
+.dark .bg-blue-600\/90 {
+  background-color: rgba(37, 99, 235, 0.9) !important;
+}
+
+.dark .hover\:bg-blue-700:hover {
+  background-color: rgb(29, 78, 216) !important;
+}
+
+.dark .hover\:bg-blue-700\/90:hover {
+  background-color: rgba(29, 78, 216, 0.9) !important;
+}
+
+/* Dark mode for cards and containers */
+.dark .bg-blue-50\/50 {
+  background-color: rgba(15, 23, 42, 0.5) !important;
+}
+
+.dark .bg-blue-200\/50 {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+}
+
+/* Dark mode for placeholders */
+.dark .placeholder\:text-blue-700\/50::placeholder {
+  color: rgba(191, 219, 254, 0.5) !important;
+}
+
+/* Dark mode for focus states */
+.dark .focus\:border-blue-500:focus {
+  border-color: rgb(59, 130, 246) !important;
+}
+
+.dark .focus\:bg-white\/40:focus {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+/* Dark mode for gradients */
+.dark .from-blue-50 {
+  --tw-gradient-from: hsl(222.2 84% 6%) !important;
+}
+
+.dark .via-white {
+  --tw-gradient-via: hsl(222.2 84% 5%) !important;
+}
+
+.dark .to-blue-100 {
+  --tw-gradient-to: hsl(222.2 84% 7%) !important;
+}
+
+.dark .from-blue-50\/30 {
+  --tw-gradient-from: rgba(15, 23, 42, 0.3) !important;
+}
+
+.dark .via-white\/20 {
+  --tw-gradient-via: rgba(15, 23, 42, 0.2) !important;
+}
+
+.dark .to-blue-100\/30 {
+  --tw-gradient-to: rgba(15, 23, 42, 0.3) !important;
+}
+
+/* Dark mode for Three.js background overlay */
+.dark .bg-gradient-to-br.from-blue-50\/30.via-white\/20.to-blue-100\/30 {
+  background: linear-gradient(to bottom right,
+    rgba(15, 23, 42, 0.3),
+    rgba(15, 23, 42, 0.2),
+    rgba(15, 23, 42, 0.3)) !important;
+}
+
+/* Ensure all containers have dark background */
+.dark * {
+  border-color: rgba(71, 85, 105, 0.3);
+}
+
+/* Dark mode for specific layout elements */
+.dark .container {
+  background-color: transparent !important;
+}
+
+/* Dark mode for hover states */
+.dark .hover\:bg-blue-50:hover {
+  background-color: rgba(15, 23, 42, 0.5) !important;
+}
+
+.dark .hover\:bg-white\/20:hover {
+  background-color: rgba(15, 23, 42, 0.7) !important;
+}
+
+.dark .hover\:bg-white\/30:hover {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+/* Dark mode for input fields */
+.dark input,
+.dark textarea {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+  color: hsl(210 40% 98%) !important;
+  border-color: rgba(71, 85, 105, 0.4) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: rgba(191, 219, 254, 0.5) !important;
 }

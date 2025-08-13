@@ -18,16 +18,22 @@ export function ThemeToggle() {
   });
 
   React.useEffect(() => {
-    // Apply theme to both html and body elements
+    // Apply theme to html, body, and ensure it cascades properly
     const root = document.documentElement;
     const body = document.body;
 
     if (theme === "dark") {
       root.classList.add("dark");
       body.classList.add("dark");
+      root.style.colorScheme = "dark";
+      body.style.backgroundColor = "hsl(222.2 84% 4.9%)";
+      body.style.color = "hsl(210 40% 98%)";
     } else {
       root.classList.remove("dark");
       body.classList.remove("dark");
+      root.style.colorScheme = "light";
+      body.style.backgroundColor = "";
+      body.style.color = "";
     }
 
     // Save to localStorage
