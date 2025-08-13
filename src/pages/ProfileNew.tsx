@@ -1,0 +1,1404 @@
+import { useEffect, useState, useRef } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { formatDistanceToNow, format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ThreeBackground } from "@/components/ThreeBackground";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  ArrowLeft,
+  Edit2,
+  Save,
+  X,
+  LogOut,
+  User,
+  Bell,
+  Plus,
+  MapPin,
+  Calendar,
+  Building,
+  GraduationCap,
+  Award,
+  Certificate,
+  Briefcase,
+  ExternalLink,
+  Github,
+  Linkedin,
+  Globe,
+  Mail,
+  Phone,
+  Users,
+  Star,
+  Trash2,
+  Search
+} from "lucide-react";
+
+interface Profile {
+  id: string;
+  user_id: string;
+  full_name: string;
+  bio: string | null;
+  avatar_url: string | null;
+  current_position?: string | null;
+  company?: string | null;
+  location?: string | null;
+  website?: string | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+  created_at: string;
+}
+
+interface WorkExperience {
+  id: string;
+  user_id: string;
+  title: string;
+  company: string;
+  location?: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+  description?: string;
+  created_at: string;
+}
+
+interface Education {
+  id: string;
+  user_id: string;
+  institution: string;
+  degree: string;
+  field_of_study?: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+  grade?: string;
+  description?: string;
+  created_at: string;
+}
+
+interface Achievement {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  date_achieved?: string;
+  organization?: string;
+  url?: string;
+  created_at: string;
+}
+
+interface Certification {
+  id: string;
+  user_id: string;
+  name: string;
+  issuing_organization: string;
+  issue_date: string;
+  expiration_date?: string;
+  credential_id?: string;
+  credential_url?: string;
+  description?: string;
+  created_at: string;
+}
+
+interface Skill {
+  id: string;
+  user_id: string;
+  name: string;
+  level?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  years_of_experience?: number;
+  created_at: string;
+}
+
+interface Connection {
+  id: string;
+  requester_id: string;
+  addressee_id: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  requester: {
+    full_name: string;
+    avatar_url: string | null;
+    user_id: string;
+  };
+  addressee: {
+    full_name: string;
+    avatar_url: string | null;
+    user_id: string;
+  };
+}
+
+interface Post {
+  id: string;
+  content: string;
+  created_at: string;
+}
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+export default function ProfileNew() {
+  const { userId } = useParams<{ userId: string }>();
+  const { user, signOut, updateAvatar, deleteAvatar } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // State variables
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [workExperience, setWorkExperience] = useState<WorkExperience[]>([]);
+  const [education, setEducation] = useState<Education[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [activeSection, setActiveSection] = useState('about');
+  
+  const [editForm, setEditForm] = useState({
+    full_name: "",
+    bio: "",
+    current_position: "",
+    company: "",
+    location: "",
+    website: "",
+    linkedin_url: "",
+    github_url: ""
+  });
+
+  const abortControllers = useRef<AbortController[]>([]);
+  const isOwnProfile = user?.id === userId;
+
+  // Cleanup function
+  useEffect(() => {
+    return () => {
+      abortControllers.current.forEach(controller => controller.abort());
+      abortControllers.current = [];
+    };
+  }, []);
+
+  // Redirect to own profile if no userId provided
+  useEffect(() => {
+    if (!userId && user) {
+      navigate(`/profile/${user.id}`, { replace: true });
+    }
+  }, [userId, user, navigate]);
+
+  // Fetch all profile data
+  useEffect(() => {
+    if (userId) {
+      // Cancel any pending requests
+      abortControllers.current.forEach(controller => controller.abort());
+      abortControllers.current = [];
+
+      const controllers = Array.from({ length: 8 }, () => new AbortController());
+      abortControllers.current.push(...controllers);
+
+      fetchProfile({ signal: controllers[0].signal });
+      fetchUserPosts({ signal: controllers[1].signal });
+      fetchConnections({ signal: controllers[2].signal });
+      fetchWorkExperience({ signal: controllers[3].signal });
+      fetchEducation({ signal: controllers[4].signal });
+      fetchAchievements({ signal: controllers[5].signal });
+      fetchCertifications({ signal: controllers[6].signal });
+      fetchSkills({ signal: controllers[7].signal });
+    }
+  }, [userId, user?.id]);
+
+  // Fetch functions
+  const fetchProfile = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .single();
+
+      if (error) throw error;
+      setProfile(data);
+      setEditForm({
+        full_name: data.full_name,
+        bio: data.bio || "",
+        current_position: data.current_position || "",
+        company: data.company || "",
+        location: data.location || "",
+        website: data.website || "",
+        linkedin_url: data.linkedin_url || "",
+        github_url: data.github_url || ""
+      });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load profile",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserPosts = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("author_id", userId)
+        .abortSignal(options.signal)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setPosts(data || []);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+    }
+  };
+
+  const fetchConnections = async (options?: { signal?: AbortSignal }) => {
+    try {
+      const { data, error } = await supabase
+        .from("connections")
+        .select(`
+          id,
+          requester_id,
+          addressee_id,
+          status,
+          created_at,
+          requester:profiles!requester_id(full_name, avatar_url, user_id),
+          addressee:profiles!addressee_id(full_name, avatar_url, user_id)
+        `)
+        .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+        .abortSignal(options?.signal);
+
+      if (error) throw error;
+      setConnections(data || []);
+    } catch (error) {
+      console.error("Error fetching connections:", error);
+    }
+  };
+
+  const fetchWorkExperience = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("work_experience")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("start_date", { ascending: false });
+
+      if (error) throw error;
+      setWorkExperience(data || []);
+    } catch (error) {
+      console.error("Error fetching work experience:", error);
+    }
+  };
+
+  const fetchEducation = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("education")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("start_date", { ascending: false });
+
+      if (error) throw error;
+      setEducation(data || []);
+    } catch (error) {
+      console.error("Error fetching education:", error);
+    }
+  };
+
+  const fetchAchievements = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("achievements")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("date_achieved", { ascending: false });
+
+      if (error) throw error;
+      setAchievements(data || []);
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+    }
+  };
+
+  const fetchCertifications = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("certifications")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("issue_date", { ascending: false });
+
+      if (error) throw error;
+      setCertifications(data || []);
+    } catch (error) {
+      console.error("Error fetching certifications:", error);
+    }
+  };
+
+  const fetchSkills = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("skills")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+      setSkills(data || []);
+    } catch (error) {
+      console.error("Error fetching skills:", error);
+    }
+  };
+
+  // Handler functions
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate("/");
+      toast({
+        title: "Signed out successfully",
+        description: "You have been successfully signed out",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile || !isOwnProfile) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: editForm.full_name,
+          bio: editForm.bio,
+          current_position: editForm.current_position,
+          company: editForm.company,
+          location: editForm.location,
+          website: editForm.website,
+          linkedin_url: editForm.linkedin_url,
+          github_url: editForm.github_url
+        })
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      setProfile(prev => prev ? { ...prev, ...editForm } : null);
+      setEditing(false);
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been successfully updated",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Update failed",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getSkillLevelColor = (level?: string) => {
+    switch (level) {
+      case 'beginner': return 'bg-gray-500/90';
+      case 'intermediate': return 'bg-blue-500/90';
+      case 'advanced': return 'bg-green-500/90';
+      case 'expert': return 'bg-purple-500/90';
+      default: return 'bg-gray-500/90';
+    }
+  };
+
+  const getSkillLevelLabel = (level?: string) => {
+    switch (level) {
+      case 'beginner': return 'Beginner';
+      case 'intermediate': return 'Intermediate';
+      case 'advanced': return 'Advanced';
+      case 'expert': return 'Expert';
+      default: return 'Not specified';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 relative overflow-hidden">
+        <ThreeBackground />
+        <div className="fixed inset-0 bg-gradient-to-br from-blue-50/30 via-white/20 to-blue-100/30 -z-5"></div>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="text-blue-900 mt-4 text-center">Loading profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 relative overflow-hidden">
+      {/* Three.js Background */}
+      <ThreeBackground />
+
+      {/* Background Gradient Overlay */}
+      <div className="fixed inset-0 bg-gradient-to-br from-blue-50/30 via-white/20 to-blue-100/30 -z-5"></div>
+
+      {/* Header */}
+      <motion.header
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+        className="backdrop-blur-xl bg-white/10 border-b border-white/20 shadow-lg z-20 sticky top-0"
+      >
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              {/* Back Button */}
+              <Link to="/dashboard">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="p-2 bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30 rounded-lg transition-all"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </motion.button>
+              </Link>
+
+              <motion.h1
+                whileHover={{ scale: 1.05 }}
+                className="text-3xl font-bold text-blue-900 tracking-tight drop-shadow-sm"
+              >
+                Lynkr
+              </motion.h1>
+
+              {/* Search Bar */}
+              <div className="hidden md:flex relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-600 h-4 w-4" />
+                <Input
+                  placeholder="Search..."
+                  className="pl-10 w-80 border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900 placeholder:text-blue-700/50"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Notification Bell */}
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                className="relative"
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30"
+                >
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </motion.div>
+
+              {/* Theme Toggle */}
+              <motion.div whileHover={{ scale: 1.05 }}>
+                <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-md">
+                  <ThemeToggle />
+                </div>
+              </motion.div>
+
+              {/* Profile Link */}
+              {user && (
+                <Link to={`/profile/${user.id}`}>
+                  <motion.div whileHover={{ scale: 1.05 }}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Button>
+                  </motion.div>
+                </Link>
+              )}
+
+              {/* Sign Out */}
+              {isOwnProfile && (
+                <motion.div whileHover={{ scale: 1.05 }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="bg-white/20 backdrop-blur-sm border border-white/30 text-blue-900 hover:bg-white/30"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </motion.div>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        {profile ? (
+          <div className="max-w-6xl mx-auto">
+            {/* Profile Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="mb-8"
+            >
+              <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-lg overflow-hidden">
+                <CardContent className="p-8">
+                  <div className="flex flex-col md:flex-row items-start gap-8">
+                    {/* Avatar and Basic Info */}
+                    <div className="flex flex-col items-center md:items-start">
+                      <Avatar className="h-32 w-32 border-4 border-white/30 shadow-lg mb-4">
+                        <AvatarImage src={profile.avatar_url || undefined} />
+                        <AvatarFallback className="bg-blue-600/90 text-white text-4xl font-bold">
+                          {profile.full_name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      {isOwnProfile && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-white/30 bg-white/20 backdrop-blur-sm text-blue-900 hover:bg-white/30"
+                        >
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Edit Photo
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Profile Information */}
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h1 className="text-3xl font-bold text-blue-900 mb-2">
+                            {profile.full_name}
+                          </h1>
+                          {profile.current_position && (
+                            <p className="text-xl text-blue-700 font-medium mb-1">
+                              {profile.current_position}
+                              {profile.company && ` at ${profile.company}`}
+                            </p>
+                          )}
+                          {profile.location && (
+                            <p className="text-blue-700/70 flex items-center gap-1 mb-3">
+                              <MapPin className="h-4 w-4" />
+                              {profile.location}
+                            </p>
+                          )}
+                        </div>
+
+                        {isOwnProfile && (
+                          <Button
+                            onClick={() => setEditing(!editing)}
+                            variant="outline"
+                            size="sm"
+                            className="border-white/30 bg-white/20 backdrop-blur-sm text-blue-900 hover:bg-white/30"
+                          >
+                            <Edit2 className="h-4 w-4 mr-2" />
+                            Edit Profile
+                          </Button>
+                        )}
+                      </div>
+
+                      {profile.bio && (
+                        <p className="text-blue-700/80 mb-4 leading-relaxed">
+                          {profile.bio}
+                        </p>
+                      )}
+
+                      {/* Social Links */}
+                      <div className="flex flex-wrap gap-3 mb-4">
+                        {profile.website && (
+                          <a
+                            href={profile.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-3 py-1 bg-blue-100/50 text-blue-700 rounded-full text-sm hover:bg-blue-200/50 transition-colors"
+                          >
+                            <Globe className="h-4 w-4" />
+                            Website
+                          </a>
+                        )}
+                        {profile.linkedin_url && (
+                          <a
+                            href={profile.linkedin_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-3 py-1 bg-blue-100/50 text-blue-700 rounded-full text-sm hover:bg-blue-200/50 transition-colors"
+                          >
+                            <Linkedin className="h-4 w-4" />
+                            LinkedIn
+                          </a>
+                        )}
+                        {profile.github_url && (
+                          <a
+                            href={profile.github_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-3 py-1 bg-blue-100/50 text-blue-700 rounded-full text-sm hover:bg-blue-200/50 transition-colors"
+                          >
+                            <Github className="h-4 w-4" />
+                            GitHub
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Stats */}
+                      <div className="flex gap-6 text-sm text-blue-700/70">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {connections.filter(c => c.status === 'accepted').length} connections
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          Joined {format(new Date(profile.created_at), 'MMMM yyyy')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Navigation Tabs */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="mb-8"
+            >
+              <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-2">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'about', label: 'About', icon: User },
+                    { id: 'experience', label: 'Experience', icon: Briefcase },
+                    { id: 'education', label: 'Education', icon: GraduationCap },
+                    { id: 'achievements', label: 'Achievements', icon: Award },
+                    { id: 'certifications', label: 'Certifications', icon: Certificate },
+                    { id: 'skills', label: 'Skills', icon: Star }
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveSection(tab.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                          activeSection === tab.id
+                            ? 'bg-blue-600/90 text-white shadow-lg'
+                            : 'text-blue-900/70 hover:text-blue-900 hover:bg-white/20'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="hidden sm:inline">{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Content Sections */}
+            <AnimatePresence mode="wait">
+              {activeSection === 'about' && (
+                <motion.div
+                  key="about"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="text-blue-900 flex items-center gap-2">
+                        <User className="h-5 w-5" />
+                        About
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {editing ? (
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="full_name" className="text-blue-900">Full Name</Label>
+                            <Input
+                              id="full_name"
+                              value={editForm.full_name}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
+                              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="bio" className="text-blue-900">Bio</Label>
+                            <Textarea
+                              id="bio"
+                              value={editForm.bio}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
+                              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+                              rows={4}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="current_position" className="text-blue-900">Current Position</Label>
+                            <Input
+                              id="current_position"
+                              value={editForm.current_position}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, current_position: e.target.value }))}
+                              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="company" className="text-blue-900">Company</Label>
+                            <Input
+                              id="company"
+                              value={editForm.company}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, company: e.target.value }))}
+                              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="location" className="text-blue-900">Location</Label>
+                            <Input
+                              id="location"
+                              value={editForm.location}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
+                              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="website" className="text-blue-900">Website</Label>
+                            <Input
+                              id="website"
+                              value={editForm.website}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
+                              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="linkedin_url" className="text-blue-900">LinkedIn URL</Label>
+                            <Input
+                              id="linkedin_url"
+                              value={editForm.linkedin_url}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, linkedin_url: e.target.value }))}
+                              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="github_url" className="text-blue-900">GitHub URL</Label>
+                            <Input
+                              id="github_url"
+                              value={editForm.github_url}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, github_url: e.target.value }))}
+                              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={handleSaveProfile}
+                              disabled={saving}
+                              className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                            >
+                              <Save className="h-4 w-4 mr-2" />
+                              {saving ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                            <Button
+                              onClick={() => setEditing(false)}
+                              variant="outline"
+                              className="border-white/30 bg-white/20 backdrop-blur-sm text-blue-900 hover:bg-white/30"
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="font-semibold text-blue-900 mb-2">Bio</h3>
+                            <p className="text-blue-700/80">
+                              {profile.bio || 'No bio available'}
+                            </p>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-blue-900 mb-2">Contact Information</h3>
+                            <div className="space-y-2">
+                              {profile.current_position && (
+                                <p className="text-blue-700/80 flex items-center gap-2">
+                                  <Briefcase className="h-4 w-4" />
+                                  {profile.current_position}
+                                  {profile.company && ` at ${profile.company}`}
+                                </p>
+                              )}
+                              {profile.location && (
+                                <p className="text-blue-700/80 flex items-center gap-2">
+                                  <MapPin className="h-4 w-4" />
+                                  {profile.location}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {activeSection === 'experience' && (
+                <motion.div
+                  key="experience"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-lg">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-blue-900 flex items-center gap-2">
+                          <Briefcase className="h-5 w-5" />
+                          Work Experience
+                        </CardTitle>
+                        {isOwnProfile && (
+                          <Button
+                            size="sm"
+                            className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Experience
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {workExperience.length > 0 ? (
+                        <div className="space-y-6">
+                          {workExperience.map((exp) => (
+                            <motion.div
+                              key={exp.id}
+                              whileHover={{ x: 5 }}
+                              className="border-l-2 border-blue-300/50 pl-6 relative"
+                            >
+                              <div className="absolute -left-2 top-0 w-4 h-4 bg-blue-600 rounded-full border-2 border-white"></div>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-blue-900 text-lg">{exp.title}</h3>
+                                  <p className="text-blue-700 font-medium flex items-center gap-2">
+                                    <Building className="h-4 w-4" />
+                                    {exp.company}
+                                    {exp.location && ` • ${exp.location}`}
+                                  </p>
+                                  <p className="text-blue-700/70 text-sm flex items-center gap-2 mt-1">
+                                    <Calendar className="h-4 w-4" />
+                                    {format(new Date(exp.start_date), 'MMM yyyy')} -
+                                    {exp.is_current ? ' Present' : (exp.end_date ? format(new Date(exp.end_date), 'MMM yyyy') : ' Present')}
+                                  </p>
+                                  {exp.description && (
+                                    <p className="text-blue-700/80 mt-3 leading-relaxed">
+                                      {exp.description}
+                                    </p>
+                                  )}
+                                </div>
+                                {isOwnProfile && (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-blue-600 hover:bg-blue-50/50"
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-red-600 hover:bg-red-50/50"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Briefcase className="h-12 w-12 text-blue-600/50 mx-auto mb-4" />
+                          <p className="text-blue-700/70">No work experience added yet</p>
+                          {isOwnProfile && (
+                            <Button
+                              className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Your First Experience
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {activeSection === 'education' && (
+                <motion.div
+                  key="education"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-lg">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-blue-900 flex items-center gap-2">
+                          <GraduationCap className="h-5 w-5" />
+                          Education
+                        </CardTitle>
+                        {isOwnProfile && (
+                          <Button
+                            size="sm"
+                            className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Education
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {education.length > 0 ? (
+                        <div className="space-y-6">
+                          {education.map((edu) => (
+                            <motion.div
+                              key={edu.id}
+                              whileHover={{ x: 5 }}
+                              className="border-l-2 border-green-300/50 pl-6 relative"
+                            >
+                              <div className="absolute -left-2 top-0 w-4 h-4 bg-green-600 rounded-full border-2 border-white"></div>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-blue-900 text-lg">{edu.degree}</h3>
+                                  {edu.field_of_study && (
+                                    <p className="text-blue-700 font-medium">{edu.field_of_study}</p>
+                                  )}
+                                  <p className="text-blue-700 font-medium flex items-center gap-2">
+                                    <GraduationCap className="h-4 w-4" />
+                                    {edu.institution}
+                                  </p>
+                                  <p className="text-blue-700/70 text-sm flex items-center gap-2 mt-1">
+                                    <Calendar className="h-4 w-4" />
+                                    {format(new Date(edu.start_date), 'MMM yyyy')} -
+                                    {edu.is_current ? ' Present' : (edu.end_date ? format(new Date(edu.end_date), 'MMM yyyy') : ' Present')}
+                                  </p>
+                                  {edu.grade && (
+                                    <p className="text-blue-700/80 mt-2">
+                                      <span className="font-medium">Grade:</span> {edu.grade}
+                                    </p>
+                                  )}
+                                  {edu.description && (
+                                    <p className="text-blue-700/80 mt-3 leading-relaxed">
+                                      {edu.description}
+                                    </p>
+                                  )}
+                                </div>
+                                {isOwnProfile && (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-blue-600 hover:bg-blue-50/50"
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-red-600 hover:bg-red-50/50"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <GraduationCap className="h-12 w-12 text-blue-600/50 mx-auto mb-4" />
+                          <p className="text-blue-700/70">No education added yet</p>
+                          {isOwnProfile && (
+                            <Button
+                              className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Your Education
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {activeSection === 'achievements' && (
+                <motion.div
+                  key="achievements"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-lg">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-blue-900 flex items-center gap-2">
+                          <Award className="h-5 w-5" />
+                          Achievements
+                        </CardTitle>
+                        {isOwnProfile && (
+                          <Button
+                            size="sm"
+                            className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Achievement
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {achievements.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {achievements.map((achievement) => (
+                            <motion.div
+                              key={achievement.id}
+                              whileHover={{ scale: 1.02 }}
+                              className="p-4 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30"
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="font-semibold text-blue-900">{achievement.title}</h3>
+                                {isOwnProfile && (
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-blue-600 hover:bg-blue-50/50 h-6 w-6 p-0"
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-red-600 hover:bg-red-50/50 h-6 w-6 p-0"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                              {achievement.organization && (
+                                <p className="text-blue-700 text-sm font-medium mb-1">
+                                  {achievement.organization}
+                                </p>
+                              )}
+                              {achievement.date_achieved && (
+                                <p className="text-blue-700/70 text-sm mb-2">
+                                  {format(new Date(achievement.date_achieved), 'MMM yyyy')}
+                                </p>
+                              )}
+                              {achievement.description && (
+                                <p className="text-blue-700/80 text-sm">
+                                  {achievement.description}
+                                </p>
+                              )}
+                              {achievement.url && (
+                                <a
+                                  href={achievement.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-blue-600 text-sm mt-2 hover:underline"
+                                >
+                                  View Certificate
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Award className="h-12 w-12 text-blue-600/50 mx-auto mb-4" />
+                          <p className="text-blue-700/70">No achievements added yet</p>
+                          {isOwnProfile && (
+                            <Button
+                              className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Your First Achievement
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {activeSection === 'certifications' && (
+                <motion.div
+                  key="certifications"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-lg">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-blue-900 flex items-center gap-2">
+                          <Certificate className="h-5 w-5" />
+                          Certifications
+                        </CardTitle>
+                        {isOwnProfile && (
+                          <Button
+                            size="sm"
+                            className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Certification
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {certifications.length > 0 ? (
+                        <div className="space-y-4">
+                          {certifications.map((cert) => (
+                            <motion.div
+                              key={cert.id}
+                              whileHover={{ x: 5 }}
+                              className="p-4 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-blue-900">{cert.name}</h3>
+                                  <p className="text-blue-700 font-medium">{cert.issuing_organization}</p>
+                                  <p className="text-blue-700/70 text-sm">
+                                    Issued {format(new Date(cert.issue_date), 'MMM yyyy')}
+                                    {cert.expiration_date && (
+                                      <span> • Expires {format(new Date(cert.expiration_date), 'MMM yyyy')}</span>
+                                    )}
+                                  </p>
+                                  {cert.credential_id && (
+                                    <p className="text-blue-700/70 text-sm mt-1">
+                                      Credential ID: {cert.credential_id}
+                                    </p>
+                                  )}
+                                  {cert.description && (
+                                    <p className="text-blue-700/80 text-sm mt-2">
+                                      {cert.description}
+                                    </p>
+                                  )}
+                                  {cert.credential_url && (
+                                    <a
+                                      href={cert.credential_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-blue-600 text-sm mt-2 hover:underline"
+                                    >
+                                      View Credential
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  )}
+                                </div>
+                                {isOwnProfile && (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-blue-600 hover:bg-blue-50/50"
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-red-600 hover:bg-red-50/50"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Certificate className="h-12 w-12 text-blue-600/50 mx-auto mb-4" />
+                          <p className="text-blue-700/70">No certifications added yet</p>
+                          {isOwnProfile && (
+                            <Button
+                              className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Your First Certification
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {activeSection === 'skills' && (
+                <motion.div
+                  key="skills"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  <Card className="backdrop-blur-xl bg-white/10 border-white/20 shadow-lg">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-blue-900 flex items-center gap-2">
+                          <Star className="h-5 w-5" />
+                          Skills
+                        </CardTitle>
+                        {isOwnProfile && (
+                          <Button
+                            size="sm"
+                            className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Skill
+                          </Button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {skills.length > 0 ? (
+                        <div className="flex flex-wrap gap-3">
+                          {skills.map((skill) => (
+                            <motion.div
+                              key={skill.id}
+                              whileHover={{ scale: 1.05 }}
+                              className="group relative"
+                            >
+                              <div className={`px-4 py-2 rounded-full text-white text-sm font-medium ${getSkillLevelColor(skill.level)} flex items-center gap-2`}>
+                                <span>{skill.name}</span>
+                                {skill.level && (
+                                  <span className="text-xs opacity-80">
+                                    {getSkillLevelLabel(skill.level)}
+                                  </span>
+                                )}
+                                {skill.years_of_experience && (
+                                  <span className="text-xs opacity-80">
+                                    ({skill.years_of_experience}y)
+                                  </span>
+                                )}
+                                {isOwnProfile && (
+                                  <button className="opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Star className="h-12 w-12 text-blue-600/50 mx-auto mb-4" />
+                          <p className="text-blue-700/70">No skills added yet</p>
+                          {isOwnProfile && (
+                            <Button
+                              className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Your Skills
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-12 max-w-md mx-auto">
+              <User className="h-16 w-16 text-blue-600/50 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-blue-900 mb-2">Profile Not Found</h3>
+              <p className="text-blue-700/70">
+                The profile you're looking for doesn't exist or has been removed.
+              </p>
+              <Link to="/dashboard">
+                <Button className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

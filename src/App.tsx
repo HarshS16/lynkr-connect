@@ -7,7 +7,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/DashboardNew";
-import Profile from "./pages/Profile";
+import Profile from "./pages/ProfileNew";
 import Network from "./pages/Network";
 import Jobs from "./pages/Jobs";
 import NotFound from "./pages/NotFound";

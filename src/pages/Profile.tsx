@@ -8,13 +8,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
-import { ArrowLeft, Edit2, Save, X, LogOut, User, Bell } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ThreeBackground } from "@/components/ThreeBackground";
+import { LikeButton } from "@/components/ui/LikeButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { LikeButton } from "@/components/ui/LikeButton";
+import {
+  ArrowLeft,
+  Edit2,
+  Save,
+  X,
+  LogOut,
+  User,
+  Bell,
+  Plus,
+  MapPin,
+  Calendar,
+  Building,
+  GraduationCap,
+  Award,
+  Certificate,
+  Briefcase,
+  ExternalLink,
+  Github,
+  Linkedin,
+  Globe,
+  Mail,
+  Phone,
+  Users,
+  Star,
+  Trash2,
+  Search
+} from "lucide-react";
 
 interface Profile {
   id: string;
@@ -22,6 +50,72 @@ interface Profile {
   full_name: string;
   bio: string | null;
   avatar_url: string | null;
+  current_position?: string | null;
+  company?: string | null;
+  location?: string | null;
+  website?: string | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+  created_at: string;
+}
+
+interface WorkExperience {
+  id: string;
+  user_id: string;
+  title: string;
+  company: string;
+  location?: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+  description?: string;
+  created_at: string;
+}
+
+interface Education {
+  id: string;
+  user_id: string;
+  institution: string;
+  degree: string;
+  field_of_study?: string;
+  start_date: string;
+  end_date?: string;
+  is_current: boolean;
+  grade?: string;
+  description?: string;
+  created_at: string;
+}
+
+interface Achievement {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  date_achieved?: string;
+  organization?: string;
+  url?: string;
+  created_at: string;
+}
+
+interface Certification {
+  id: string;
+  user_id: string;
+  name: string;
+  issuing_organization: string;
+  issue_date: string;
+  expiration_date?: string;
+  credential_id?: string;
+  credential_url?: string;
+  description?: string;
+  created_at: string;
+}
+
+interface Skill {
+  id: string;
+  user_id: string;
+  name: string;
+  level?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  years_of_experience?: number;
   created_at: string;
 }
 
@@ -58,6 +152,11 @@ export default function Profile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [workExperience, setWorkExperience] = useState<WorkExperience[]>([]);
+  const [education, setEducation] = useState<Education[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [notifications, setNotifications] = useState<Array<{
     id: string;
     message: string;
@@ -68,7 +167,16 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ full_name: "", bio: "" });
+  const [editForm, setEditForm] = useState({
+    full_name: "",
+    bio: "",
+    current_position: "",
+    company: "",
+    location: "",
+    website: "",
+    linkedin_url: "",
+    github_url: ""
+  });
   const [saving, setSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -76,6 +184,9 @@ export default function Profile() {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [activeSection, setActiveSection] = useState('about');
 
   const fetchNotifications = async () => {
     if (!user?.id) return;
@@ -127,14 +238,17 @@ export default function Profile() {
       abortControllers.current.forEach(controller => controller.abort());
       abortControllers.current = [];
 
-      const controller1 = new AbortController();
-      const controller2 = new AbortController();
-      const controller3 = new AbortController();
-      abortControllers.current.push(controller1, controller2, controller3);
+      const controllers = Array.from({ length: 8 }, () => new AbortController());
+      abortControllers.current.push(...controllers);
 
-      fetchProfile({ signal: controller1.signal });
-      fetchUserPosts({ signal: controller2.signal });
-      fetchConnections({ signal: controller3.signal });
+      fetchProfile({ signal: controllers[0].signal });
+      fetchUserPosts({ signal: controllers[1].signal });
+      fetchConnections({ signal: controllers[2].signal });
+      fetchWorkExperience({ signal: controllers[3].signal });
+      fetchEducation({ signal: controllers[4].signal });
+      fetchAchievements({ signal: controllers[5].signal });
+      fetchCertifications({ signal: controllers[6].signal });
+      fetchSkills({ signal: controllers[7].signal });
     }
   }, [userId, user?.id]);
 
@@ -177,7 +291,16 @@ export default function Profile() {
 
       if (error) throw error;
       setProfile(data);
-      setEditForm({ full_name: data.full_name, bio: data.bio || "" });
+      setEditForm({
+        full_name: data.full_name,
+        bio: data.bio || "",
+        current_position: data.current_position || "",
+        company: data.company || "",
+        location: data.location || "",
+        website: data.website || "",
+        linkedin_url: data.linkedin_url || "",
+        github_url: data.github_url || ""
+      });
     } catch (error) {
       console.error("Error fetching profile:", error);
       toast({
@@ -203,6 +326,86 @@ export default function Profile() {
       setPosts(data || []);
     } catch (error) {
       console.error("Error fetching posts:", error);
+    }
+  };
+
+  const fetchWorkExperience = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("work_experience")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("start_date", { ascending: false });
+
+      if (error) throw error;
+      setWorkExperience(data || []);
+    } catch (error) {
+      console.error("Error fetching work experience:", error);
+    }
+  };
+
+  const fetchEducation = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("education")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("start_date", { ascending: false });
+
+      if (error) throw error;
+      setEducation(data || []);
+    } catch (error) {
+      console.error("Error fetching education:", error);
+    }
+  };
+
+  const fetchAchievements = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("achievements")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("date_achieved", { ascending: false });
+
+      if (error) throw error;
+      setAchievements(data || []);
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+    }
+  };
+
+  const fetchCertifications = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("certifications")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("issue_date", { ascending: false });
+
+      if (error) throw error;
+      setCertifications(data || []);
+    } catch (error) {
+      console.error("Error fetching certifications:", error);
+    }
+  };
+
+  const fetchSkills = async (options: { signal?: AbortSignal } = {}) => {
+    try {
+      const { data, error } = await supabase
+        .from("skills")
+        .select("*")
+        .eq("user_id", userId)
+        .abortSignal(options.signal)
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+      setSkills(data || []);
+    } catch (error) {
+      console.error("Error fetching skills:", error);
     }
   };
 
@@ -321,11 +524,21 @@ export default function Profile() {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    toast({
-      title: "Signed out",
-      description: "You have been successfully signed out",
-    });
+    try {
+      await signOut();
+      navigate("/");
+      toast({
+        title: "Signed out successfully",
+        description: "You have been successfully signed out",
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeletePost = async (postId: string) => {
