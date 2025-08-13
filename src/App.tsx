@@ -8,6 +8,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/DashboardNew";
 import Profile from "./pages/Profile";
+import Network from "./pages/Network";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/reset-password";
 
@@ -31,6 +32,11 @@ const App = () => (
             <Route path="/profile/:userId" element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/network" element={
+              <ProtectedRoute>
+                <Network />
               </ProtectedRoute>
             } />
             <Route path="/reset-password" element={<ResetPassword />} />

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { formatDistanceToNow } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
 import {
@@ -220,6 +220,7 @@ interface Notification {
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState('');
   const [loading, setLoading] = useState(false);
@@ -460,6 +461,14 @@ export default function Dashboard() {
     }
   };
 
+  const handleSidebarClick = (index: number, label: string) => {
+    if (label === 'Network') {
+      navigate('/network');
+    } else {
+      setActiveTab(index);
+    }
+  };
+
   const sidebarItems = [
     { id: 1, label: 'Home', icon: Home, active: activeTab === 0 },
     { id: 2, label: 'Network', icon: Users, active: activeTab === 1 },
@@ -643,7 +652,7 @@ export default function Dashboard() {
                   <motion.button
                     key={item.id}
                     variants={fadeInUp}
-                    onClick={() => setActiveTab(index)}
+                    onClick={() => handleSidebarClick(index, item.label)}
                     className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} w-full p-4 rounded-xl transition-all duration-150 relative ${
                       activeTab === index
                         ? 'bg-blue-600/90 backdrop-blur-sm text-white shadow-lg'
