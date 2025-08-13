@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { formatDistanceToNow, format } from "date-fns";
+import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ThreeBackground } from "@/components/ThreeBackground";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+
 import {
   ArrowLeft,
   Edit2,
@@ -28,14 +28,13 @@ import {
   Building,
   GraduationCap,
   Award,
-  Certificate,
+  FileText,
   Briefcase,
   ExternalLink,
   Github,
   Linkedin,
   Globe,
-  Mail,
-  Phone,
+
   Users,
   Star,
   Trash2,
@@ -157,7 +156,7 @@ const staggerContainer = {
 
 export default function ProfileNew() {
   const { userId } = useParams<{ userId: string }>();
-  const { user, signOut, updateAvatar, deleteAvatar } = useAuth();
+  const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -726,7 +725,7 @@ export default function ProfileNew() {
                     { id: 'experience', label: 'Experience', icon: Briefcase },
                     { id: 'education', label: 'Education', icon: GraduationCap },
                     { id: 'achievements', label: 'Achievements', icon: Award },
-                    { id: 'certifications', label: 'Certifications', icon: Certificate },
+                    { id: 'certifications', label: 'Certifications', icon: FileText },
                     { id: 'skills', label: 'Skills', icon: Star }
                   ].map((tab) => {
                     const Icon = tab.icon;
@@ -1209,7 +1208,7 @@ export default function ProfileNew() {
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-blue-900 flex items-center gap-2">
-                          <Certificate className="h-5 w-5" />
+                          <FileText className="h-5 w-5" />
                           Certifications
                         </CardTitle>
                         {isOwnProfile && (
@@ -1288,7 +1287,7 @@ export default function ProfileNew() {
                         </div>
                       ) : (
                         <div className="text-center py-8">
-                          <Certificate className="h-12 w-12 text-blue-600/50 mx-auto mb-4" />
+                          <FileText className="h-12 w-12 text-blue-600/50 mx-auto mb-4" />
                           <p className="text-blue-700/70">No certifications added yet</p>
                           {isOwnProfile && (
                             <Button
