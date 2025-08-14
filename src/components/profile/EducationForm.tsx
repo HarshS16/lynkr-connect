@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +27,21 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
   const { createEducation, updateEducation } = useEducation(userId);
   const isEditing = !!education;
 
+  // Refs for scroll containers
+  const institutionScrollRef = useRef<HTMLDivElement>(null);
+  const degreeScrollRef = useRef<HTMLDivElement>(null);
+  const fieldScrollRef = useRef<HTMLDivElement>(null);
+
+  // Custom scroll wheel handler for dropdowns
+  const handleWheelScroll = (e: WheelEvent, container: HTMLDivElement | null) => {
+    if (container) {
+      e.preventDefault();
+      container.scrollTop += e.deltaY;
+    }
+  };
+
+
+
   const [formData, setFormData] = useState({
     institution: education?.institution || '',
     degree: education?.degree || '',
@@ -51,10 +66,24 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
 
   // Filter universities based on search
   const filteredUniversities = useMemo(() => {
-    if (!institutionSearch) return indianUniversities.slice(0, 50); // Show first 50 by default
+    if (!institutionSearch) {
+      // Show popular/important universities first, then others
+      const popularUniversities = indianUniversities.filter(uni =>
+        uni.includes('IIT') || uni.includes('IIM') || uni.includes('NIT') ||
+        uni.includes('AIIMS') || uni.includes('University of Delhi') ||
+        uni.includes('University of Mumbai') || uni.includes('Anna University') ||
+        uni.includes('Jadavpur University') || uni.includes('Banaras Hindu University')
+      );
+      const otherUniversities = indianUniversities.filter(uni =>
+        !popularUniversities.includes(uni)
+      ).slice(0, 50); // Show first 50 of others
+      return [...popularUniversities, ...otherUniversities];
+    }
+
+    // When searching, show all matching results (no limit for search)
     return indianUniversities.filter(university =>
       university.toLowerCase().includes(institutionSearch.toLowerCase())
-    ).slice(0, 50); // Limit to 50 results for performance
+    );
   }, [institutionSearch]);
 
   // Filter degrees based on search
@@ -93,6 +122,39 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
       setIsOtherField(true);
     }
   }, [formData.field_of_study]);
+
+  // Add wheel event listeners to scroll containers
+  useEffect(() => {
+    const institutionContainer = institutionScrollRef.current;
+    const degreeContainer = degreeScrollRef.current;
+    const fieldContainer = fieldScrollRef.current;
+
+    const institutionHandler = (e: WheelEvent) => handleWheelScroll(e, institutionContainer);
+    const degreeHandler = (e: WheelEvent) => handleWheelScroll(e, degreeContainer);
+    const fieldHandler = (e: WheelEvent) => handleWheelScroll(e, fieldContainer);
+
+    if (institutionContainer) {
+      institutionContainer.addEventListener('wheel', institutionHandler, { passive: false });
+    }
+    if (degreeContainer) {
+      degreeContainer.addEventListener('wheel', degreeHandler, { passive: false });
+    }
+    if (fieldContainer) {
+      fieldContainer.addEventListener('wheel', fieldHandler, { passive: false });
+    }
+
+    return () => {
+      if (institutionContainer) {
+        institutionContainer.removeEventListener('wheel', institutionHandler);
+      }
+      if (degreeContainer) {
+        degreeContainer.removeEventListener('wheel', degreeHandler);
+      }
+      if (fieldContainer) {
+        fieldContainer.removeEventListener('wheel', fieldHandler);
+      }
+    };
+  }, [institutionOpen, degreeOpen, fieldOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,7 +243,7 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
                         onValueChange={setInstitutionSearch}
                       />
                       <CommandEmpty>No institution found.</CommandEmpty>
-                      <CommandGroup className="max-h-64 overflow-auto">
+                      <CommandGroup ref={institutionScrollRef} className="max-h-64 overflow-auto">
                         {filteredUniversities.map((university) => (
                           <CommandItem
                             key={university}
@@ -278,7 +340,7 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
                           onValueChange={setDegreeSearch}
                         />
                         <CommandEmpty>No degree found.</CommandEmpty>
-                        <CommandGroup className="max-h-64 overflow-auto">
+                        <CommandGroup ref={degreeScrollRef} className="max-h-64 overflow-auto">
                           {filteredDegrees.map((degree) => (
                             <CommandItem
                               key={degree}
@@ -374,7 +436,7 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
                           onValueChange={setFieldSearch}
                         />
                         <CommandEmpty>No field found.</CommandEmpty>
-                        <CommandGroup className="max-h-64 overflow-auto">
+                        <CommandGroup ref={fieldScrollRef} className="max-h-64 overflow-auto">
                           {filteredFields.map((field) => (
                             <CommandItem
                               key={field}
