@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { likePost, unlikePost, getLikesCount, hasLiked } from '@/integrations/supabase/likes';
-import { createComment, getComments, getCommentsCount } from '@/integrations/supabase/comments';
+import { createComment, getComments, getCommentsCount, deleteComment } from '@/integrations/supabase/comments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +31,7 @@ import {
   TrendingUp,
   Briefcase,
   Calendar,
+  X,
   Camera,
   Edit3,
   Menu,
@@ -117,9 +118,13 @@ export default function Dashboard() {
           const newComment = payload.new as any;
           if (newComment.post_id) {
             const comments = await getComments(newComment.post_id);
+            // Sort comments from latest to oldest
+            const sortedComments = comments.sort((a, b) =>
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
             setPostComments(prev => ({
               ...prev,
-              [newComment.post_id]: comments
+              [newComment.post_id]: sortedComments
             }));
           }
         }
@@ -221,7 +226,11 @@ export default function Dashboard() {
         ]);
 
         likesData[post.id] = { count: likesCount, userLiked };
-        commentsData[post.id] = comments;
+        // Sort comments from latest to oldest
+        const sortedComments = comments.sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        commentsData[post.id] = sortedComments;
       } catch (error) {
         console.error(`Error fetching interactions for post ${post.id}:`, error);
         likesData[post.id] = { count: 0, userLiked: false };
@@ -330,9 +339,13 @@ export default function Dashboard() {
 
       // Refresh comments for this post
       const comments = await getComments(postId);
+      // Sort comments from latest to oldest
+      const sortedComments = comments.sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
       setPostComments(prev => ({
         ...prev,
-        [postId]: comments
+        [postId]: sortedComments
       }));
 
       // Clear the comment text for this specific post
@@ -350,6 +363,37 @@ export default function Dashboard() {
       toast({
         title: "Error",
         description: "Failed to add comment",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, postId: string) => {
+    if (!user?.id) return;
+
+    try {
+      await deleteComment(commentId);
+
+      // Refresh comments for this post
+      const comments = await getComments(postId);
+      // Sort comments from latest to oldest
+      const sortedComments = comments.sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: sortedComments
+      }));
+
+      toast({
+        title: "Success",
+        description: "Comment deleted successfully!"
+      });
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete comment",
         variant: "destructive"
       });
     }
@@ -877,7 +921,7 @@ export default function Dashboard() {
                                               </AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1">
-                                              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                                              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30 relative group">
                                                 <div className="flex items-center gap-2 mb-1">
                                                   <span className="font-medium text-blue-900 text-sm">
                                                     {comment.profiles?.full_name}
@@ -887,6 +931,18 @@ export default function Dashboard() {
                                                   </span>
                                                 </div>
                                                 <p className="text-blue-900 text-sm">{comment.content}</p>
+
+                                                {/* Delete button - only show for comment author */}
+                                                {comment.user_id === user?.id && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleDeleteComment(comment.id, post.id)}
+                                                    className="absolute top-2 right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600"
+                                                  >
+                                                    <X className="h-3 w-3" />
+                                                  </Button>
+                                                )}
                                               </div>
                                             </div>
                                           </motion.div>
