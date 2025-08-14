@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { ThreeBackground } from '@/components/ThreeBackground';
+import { MessageButton } from '@/components/messaging/MessageButton';
 import {
   Search,
   Users,
@@ -587,24 +588,35 @@ export default function Network() {
                           {profile.bio || 'Professional looking to connect and grow their network'}
                         </p>
 
-                        {/* Connect Button */}
-                        <Button
-                          onClick={() => sendConnectionRequest(profile.user_id)}
-                          disabled={loading || connectionStatuses[profile.user_id] === 'pending'}
-                          className="w-full bg-blue-600/90 hover:bg-blue-700/90 text-white backdrop-blur-sm border border-blue-500/30 transition-all duration-300 group-hover:scale-105"
-                        >
-                          {connectionStatuses[profile.user_id] === 'pending' ? (
-                            <>
-                              <UserCheck className="h-4 w-4 mr-2" />
-                              Request Sent
-                            </>
-                          ) : (
-                            <>
-                              <UserPlus className="h-4 w-4 mr-2" />
-                              Connect
-                            </>
-                          )}
-                        </Button>
+                        {/* Action Buttons */}
+                        <div className="space-y-2">
+                          <Button
+                            onClick={() => sendConnectionRequest(profile.user_id)}
+                            disabled={loading || connectionStatuses[profile.user_id] === 'pending'}
+                            className="w-full bg-blue-600/90 hover:bg-blue-700/90 text-white backdrop-blur-sm border border-blue-500/30 transition-all duration-300 group-hover:scale-105"
+                          >
+                            {connectionStatuses[profile.user_id] === 'pending' ? (
+                              <>
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Request Sent
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Connect
+                              </>
+                            )}
+                          </Button>
+
+                          <MessageButton
+                            userId={profile.user_id}
+                            userName={profile.full_name}
+                            userAvatar={profile.avatar_url}
+                            userPosition={profile.current_position}
+                            variant="outline"
+                            className="w-full border-blue-300/50 text-blue-700 hover:bg-blue-50/50 backdrop-blur-sm transition-all duration-300 group-hover:scale-105"
+                          />
+                        </div>
 
                         {/* Member Since */}
                         <p className="text-xs text-blue-700/50 mt-3">

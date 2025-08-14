@@ -324,6 +324,8 @@ export default function Dashboard() {
       navigate('/network');
     } else if (label === 'Jobs') {
       navigate('/jobs');
+    } else if (label === 'Messages') {
+      navigate('/messages');
     } else if (label === 'Notifications') {
       setShowNotifications(!showNotifications);
       setActiveTab(index);
