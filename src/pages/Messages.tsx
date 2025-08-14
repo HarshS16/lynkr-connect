@@ -87,7 +87,45 @@ export default function Messages() {
                 Lynkr
               </motion.h1>
 
+              {/* Search Bar */}
+              <div className="hidden md:flex relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-600 h-4 w-4" />
+                <Input
+                  placeholder="Search conversations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-80 border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900 placeholder:text-blue-700/50"
+                />
+              </div>
+            </div>
+
+            {/* User Profile and Actions */}
+            <div className="flex items-center justify-between mt-4">
               <div className="flex items-center gap-4">
+                {user && (
+                  <Link
+                    to={`/profile/${user.id}`}
+                    className="flex items-center gap-3 text-blue-900 hover:text-blue-700 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
+                      {user.email?.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="font-medium">View Profile</span>
+                  </Link>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/network')}
+                  className="text-blue-900 hover:text-blue-700 hover:bg-white/20"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Network
+                </Button>
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -114,21 +152,6 @@ export default function Messages() {
               <h1 className="text-4xl font-bold text-blue-900 mb-2">Messages</h1>
               <p className="text-blue-700/70">Connect and chat with your network</p>
             </div>
-
-            {/* Search Bar */}
-            <Card className="mb-6 bg-white/30 backdrop-blur-sm border-white/30">
-              <CardContent className="p-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-600 h-4 w-4" />
-                  <Input
-                    placeholder="Search conversations..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900 placeholder:text-blue-700/50"
-                  />
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Conversations List */}
             <Card className="bg-white/30 backdrop-blur-sm border-white/30">
