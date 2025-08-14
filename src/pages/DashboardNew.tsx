@@ -91,6 +91,7 @@ export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userPostsCount, setUserPostsCount] = useState(0);
   const [showComments, setShowComments] = useState<string | null>(null);
+  const [commentsAlwaysVisible, setCommentsAlwaysVisible] = useState(true); // Show comments by default
   const [newComment, setNewComment] = useState('');
   const [postComments, setPostComments] = useState<{[key: string]: any[]}>({});
   const [postLikes, setPostLikes] = useState<{[key: string]: {count: number, userLiked: boolean}}>({});
@@ -99,6 +100,34 @@ export default function Dashboard() {
     fetchPosts();
     fetchNotifications();
     fetchUserPostsCount();
+
+    // Set up real-time subscription for comments
+    const commentsSubscription = supabase
+      .channel('comments')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comments'
+        },
+        async (payload) => {
+          // When a new comment is added, refresh comments for that post
+          const newComment = payload.new as any;
+          if (newComment.post_id) {
+            const comments = await getComments(newComment.post_id);
+            setPostComments(prev => ({
+              ...prev,
+              [newComment.post_id]: comments
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      commentsSubscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -757,7 +786,7 @@ export default function Dashboard() {
                                   </motion.button>
                                   <motion.button
                                     whileHover={{ scale: 1.05 }}
-                                    onClick={() => setShowComments(showComments === post.id ? null : post.id)}
+                                    onClick={() => setCommentsAlwaysVisible(!commentsAlwaysVisible)}
                                     className="flex items-center gap-2 hover:text-blue-600 transition-colors"
                                   >
                                     <MessageSquare className="h-4 w-4" />
@@ -780,9 +809,9 @@ export default function Dashboard() {
                                   </motion.button>
                                 </div>
 
-                                {/* Comments Section */}
+                                {/* Comments Section - Always Visible */}
                                 <AnimatePresence>
-                                  {showComments === post.id && (
+                                  {commentsAlwaysVisible && (
                                     <motion.div
                                       initial={{ opacity: 0, height: 0 }}
                                       animate={{ opacity: 1, height: 'auto' }}
