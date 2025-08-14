@@ -47,7 +47,7 @@ export async function getComments(postId: string) {
       content,
       created_at,
       user_id,
-      profiles:profiles!comments_user_id_fkey (
+      profiles:profiles!comments_user_id_profiles_fkey (
         full_name,
         user_id,
         avatar_url
