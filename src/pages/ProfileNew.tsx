@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -14,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,6 +27,8 @@ import { EducationForm } from "@/components/profile/EducationForm";
 import { SkillsForm } from "@/components/profile/SkillsForm";
 import { AchievementForm } from "@/components/profile/AchievementForm";
 import { CertificationForm } from "@/components/profile/CertificationForm";
+import { cityOptions } from "@/data/cities";
+import { cn } from "@/lib/utils";
 
 import {
   ArrowLeft,
@@ -50,7 +54,9 @@ import {
   Users,
   Star,
   Trash2,
-  Search
+  Search,
+  Check,
+  ChevronsUpDown
 } from "lucide-react";
 
 interface Profile {
@@ -192,6 +198,9 @@ export default function ProfileNew() {
   const [activeSection, setActiveSection] = useState('about');
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [locationSearch, setLocationSearch] = useState('');
+  const [isOtherLocation, setIsOtherLocation] = useState(false);
 
   // Form states
   const [showWorkForm, setShowWorkForm] = useState(false);
@@ -239,6 +248,35 @@ export default function ProfileNew() {
       });
     }
   }, [profile]);
+
+  // Filter cities based on search
+  const filteredCities = useMemo(() => {
+    if (!locationSearch) {
+      // Show popular cities first, then others
+      const popularCities = cityOptions.filter(city =>
+        city.includes('Mumbai') || city.includes('Delhi') || city.includes('Bengaluru') ||
+        city.includes('Chennai') || city.includes('Kolkata') || city.includes('Hyderabad') ||
+        city.includes('Pune') || city.includes('Ahmedabad') || city.includes('Jaipur') ||
+        city.includes('Surat') || city.includes('Lucknow') || city.includes('Kanpur')
+      );
+      const otherCities = cityOptions.filter(city =>
+        !popularCities.includes(city)
+      ).slice(0, 50); // Show first 50 of others
+      return [...popularCities, ...otherCities];
+    }
+
+    // When searching, show all matching results
+    return cityOptions.filter(city =>
+      city.toLowerCase().includes(locationSearch.toLowerCase())
+    );
+  }, [locationSearch]);
+
+  // Check if current location is in the list or is custom
+  useMemo(() => {
+    if (editForm.location && !cityOptions.includes(editForm.location)) {
+      setIsOtherLocation(true);
+    }
+  }, [editForm.location]);
 
   // Handler functions
   const handleEditWorkExperience = (workExp: WorkExperience) => {
@@ -347,6 +385,32 @@ export default function ProfileNew() {
       setUploadingPhoto(false);
     }
   };
+
+  // Add scroll wheel support for location dropdown
+  useEffect(() => {
+    const handleWheelEvent = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Check if we're inside a location dropdown scroll container
+      const scrollContainer = target.closest('.location-dropdown-scroll-container');
+
+      if (scrollContainer) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Apply smooth scrolling
+        const scrollAmount = e.deltaY * 0.8;
+        scrollContainer.scrollTop += scrollAmount;
+      }
+    };
+
+    // Add event listener to document to catch all wheel events
+    document.addEventListener('wheel', handleWheelEvent, { passive: false });
+
+    return () => {
+      document.removeEventListener('wheel', handleWheelEvent);
+    };
+  }, []);
 
   const getSkillLevelColor = (level?: string) => {
     switch (level) {
@@ -744,12 +808,98 @@ export default function ProfileNew() {
                           </div>
                           <div>
                             <Label htmlFor="location" className="text-blue-900">Location</Label>
-                            <Input
-                              id="location"
-                              value={editForm.location}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
-                              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
-                            />
+                            {!isOtherLocation ? (
+                              <div className="space-y-2">
+                                <Popover open={locationOpen} onOpenChange={setLocationOpen}>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={locationOpen}
+                                      className="w-full justify-between border-white/30 bg-white/30 backdrop-blur-sm text-blue-900 hover:bg-white/40"
+                                    >
+                                      {editForm.location || "Select location..."}
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-full p-0">
+                                    <Command>
+                                      <CommandInput
+                                        placeholder="Search cities..."
+                                        value={locationSearch}
+                                        onValueChange={setLocationSearch}
+                                      />
+                                      <CommandEmpty>No city found.</CommandEmpty>
+                                      <CommandGroup className="max-h-64 overflow-auto location-dropdown-scroll-container">
+                                        {filteredCities.map((city) => (
+                                          <CommandItem
+                                            key={city}
+                                            value={city}
+                                            onSelect={(currentValue) => {
+                                              setEditForm(prev => ({ ...prev, location: currentValue }));
+                                              setLocationOpen(false);
+                                              setLocationSearch('');
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                editForm.location === city ? "opacity-100" : "opacity-0"
+                                              )}
+                                            />
+                                            {city}
+                                          </CommandItem>
+                                        ))}
+                                        <CommandItem
+                                          value="other"
+                                          onSelect={() => {
+                                            setIsOtherLocation(true);
+                                            setEditForm(prev => ({ ...prev, location: '' }));
+                                            setLocationOpen(false);
+                                            setLocationSearch('');
+                                          }}
+                                          className="border-t border-gray-200 font-medium text-blue-600"
+                                        >
+                                          <Plus className="mr-2 h-4 w-4" />
+                                          Other (Enter custom location)
+                                        </CommandItem>
+                                      </CommandGroup>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setIsOtherLocation(true)}
+                                  className="text-blue-600 hover:text-blue-700"
+                                >
+                                  Can't find your city? Enter manually
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <Input
+                                  id="location"
+                                  value={editForm.location}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
+                                  placeholder="Enter city name"
+                                  className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setIsOtherLocation(false);
+                                    setEditForm(prev => ({ ...prev, location: '' }));
+                                  }}
+                                  className="text-blue-600 hover:text-blue-700"
+                                >
+                                  Choose from list instead
+                                </Button>
+                              </div>
+                            )}
                           </div>
                           <div>
                             <Label htmlFor="website" className="text-blue-900">
