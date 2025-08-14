@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,18 +27,7 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
   const { createEducation, updateEducation } = useEducation(userId);
   const isEditing = !!education;
 
-  // Refs for scroll containers
-  const institutionScrollRef = useRef<HTMLDivElement>(null);
-  const degreeScrollRef = useRef<HTMLDivElement>(null);
-  const fieldScrollRef = useRef<HTMLDivElement>(null);
 
-  // Custom scroll wheel handler for dropdowns
-  const handleWheelScroll = (e: WheelEvent, container: HTMLDivElement | null) => {
-    if (container) {
-      e.preventDefault();
-      container.scrollTop += e.deltaY;
-    }
-  };
 
 
 
@@ -125,36 +114,29 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
 
   // Add wheel event listeners to scroll containers
   useEffect(() => {
-    const institutionContainer = institutionScrollRef.current;
-    const degreeContainer = degreeScrollRef.current;
-    const fieldContainer = fieldScrollRef.current;
+    const handleWheelEvent = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
 
-    const institutionHandler = (e: WheelEvent) => handleWheelScroll(e, institutionContainer);
-    const degreeHandler = (e: WheelEvent) => handleWheelScroll(e, degreeContainer);
-    const fieldHandler = (e: WheelEvent) => handleWheelScroll(e, fieldContainer);
+      // Check if we're inside a dropdown scroll container
+      const scrollContainer = target.closest('.dropdown-scroll-container');
 
-    if (institutionContainer) {
-      institutionContainer.addEventListener('wheel', institutionHandler, { passive: false });
-    }
-    if (degreeContainer) {
-      degreeContainer.addEventListener('wheel', degreeHandler, { passive: false });
-    }
-    if (fieldContainer) {
-      fieldContainer.addEventListener('wheel', fieldHandler, { passive: false });
-    }
+      if (scrollContainer) {
+        e.preventDefault();
+        e.stopPropagation();
 
-    return () => {
-      if (institutionContainer) {
-        institutionContainer.removeEventListener('wheel', institutionHandler);
-      }
-      if (degreeContainer) {
-        degreeContainer.removeEventListener('wheel', degreeHandler);
-      }
-      if (fieldContainer) {
-        fieldContainer.removeEventListener('wheel', fieldHandler);
+        // Apply smooth scrolling
+        const scrollAmount = e.deltaY * 0.8;
+        scrollContainer.scrollTop += scrollAmount;
       }
     };
-  }, [institutionOpen, degreeOpen, fieldOpen]);
+
+    // Add event listener to document to catch all wheel events
+    document.addEventListener('wheel', handleWheelEvent, { passive: false });
+
+    return () => {
+      document.removeEventListener('wheel', handleWheelEvent);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,7 +225,7 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
                         onValueChange={setInstitutionSearch}
                       />
                       <CommandEmpty>No institution found.</CommandEmpty>
-                      <CommandGroup ref={institutionScrollRef} className="max-h-64 overflow-auto">
+                      <CommandGroup className="max-h-64 overflow-auto dropdown-scroll-container">
                         {filteredUniversities.map((university) => (
                           <CommandItem
                             key={university}
@@ -340,7 +322,7 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
                           onValueChange={setDegreeSearch}
                         />
                         <CommandEmpty>No degree found.</CommandEmpty>
-                        <CommandGroup ref={degreeScrollRef} className="max-h-64 overflow-auto">
+                        <CommandGroup className="max-h-64 overflow-auto dropdown-scroll-container">
                           {filteredDegrees.map((degree) => (
                             <CommandItem
                               key={degree}
@@ -436,7 +418,7 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
                           onValueChange={setFieldSearch}
                         />
                         <CommandEmpty>No field found.</CommandEmpty>
-                        <CommandGroup ref={fieldScrollRef} className="max-h-64 overflow-auto">
+                        <CommandGroup className="max-h-64 overflow-auto dropdown-scroll-container">
                           {filteredFields.map((field) => (
                             <CommandItem
                               key={field}
