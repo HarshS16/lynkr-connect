@@ -2,13 +2,14 @@
 -- Run this SQL in your Supabase SQL Editor to create the profile tables
 
 -- 1. Add new columns to profiles table
-ALTER TABLE public.profiles 
+ALTER TABLE public.profiles
 ADD COLUMN IF NOT EXISTS current_position TEXT,
 ADD COLUMN IF NOT EXISTS company TEXT,
 ADD COLUMN IF NOT EXISTS location TEXT,
 ADD COLUMN IF NOT EXISTS website TEXT,
 ADD COLUMN IF NOT EXISTS linkedin_url TEXT,
-ADD COLUMN IF NOT EXISTS github_url TEXT;
+ADD COLUMN IF NOT EXISTS github_url TEXT,
+ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 
 -- 2. Create work_experience table
 CREATE TABLE IF NOT EXISTS public.work_experience (
@@ -161,3 +162,30 @@ CREATE TRIGGER update_skills_updated_at
   BEFORE UPDATE ON public.skills
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
+
+-- 7. Create storage bucket for avatars
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 8. Set up storage policies for avatars
+CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
+FOR SELECT USING (bucket_id = 'avatars');
+
+CREATE POLICY "Users can upload their own avatar" ON storage.objects
+FOR INSERT WITH CHECK (
+  bucket_id = 'avatars'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Users can update their own avatar" ON storage.objects
+FOR UPDATE USING (
+  bucket_id = 'avatars'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
+
+CREATE POLICY "Users can delete their own avatar" ON storage.objects
+FOR DELETE USING (
+  bucket_id = 'avatars'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);

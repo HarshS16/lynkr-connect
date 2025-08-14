@@ -173,7 +173,7 @@ export default function ProfileNew() {
   const navigate = useNavigate();
 
   // Use custom hooks for profile data
-  const { profile, loading: profileLoading, updateProfile, isOwnProfile } = useProfile(userId);
+  const { profile, loading: profileLoading, updateProfile, uploadAvatar, deleteAvatar, isOwnProfile } = useProfile(userId);
 
   // Use hooks with fallback for new tables that might not exist yet
   const { workExperience = [], loading: workLoading } = useWorkExperience(userId);
@@ -191,6 +191,7 @@ export default function ProfileNew() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeSection, setActiveSection] = useState('about');
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Form states
   const [showWorkForm, setShowWorkForm] = useState(false);
@@ -310,6 +311,40 @@ export default function ProfileNew() {
       console.error("Error updating profile:", error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !isOwnProfile) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please select an image file.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Please select an image smaller than 5MB.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      await uploadAvatar(file);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -481,14 +516,25 @@ export default function ProfileNew() {
                       </Avatar>
 
                       {isOwnProfile && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-white/30 bg-white/20 backdrop-blur-sm text-blue-900 hover:bg-white/30"
-                        >
-                          <Edit2 className="h-4 w-4 mr-2" />
-                          Edit Photo
-                        </Button>
+                        <>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                            id="photo-upload"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => document.getElementById('photo-upload')?.click()}
+                            disabled={uploadingPhoto}
+                            className="border-white/30 bg-white/20 backdrop-blur-sm text-blue-900 hover:bg-white/30"
+                          >
+                            <Edit2 className="h-4 w-4 mr-2" />
+                            {uploadingPhoto ? 'Uploading...' : 'Edit Photo'}
+                          </Button>
+                        </>
                       )}
                     </div>
 
