@@ -93,6 +93,7 @@ export default function Dashboard() {
   const [showComments, setShowComments] = useState<string | null>(null);
   const [commentsAlwaysVisible, setCommentsAlwaysVisible] = useState(true); // Show comments by default
   const [newComment, setNewComment] = useState('');
+  const [postCommentTexts, setPostCommentTexts] = useState<{[key: string]: string}>({});
   const [postComments, setPostComments] = useState<{[key: string]: any[]}>({});
   const [postLikes, setPostLikes] = useState<{[key: string]: {count: number, userLiked: boolean}}>({});
 
@@ -321,10 +322,11 @@ export default function Dashboard() {
   };
 
   const handleComment = async (postId: string) => {
-    if (!user?.id || !newComment.trim()) return;
+    const commentText = postCommentTexts[postId];
+    if (!user?.id || !commentText?.trim()) return;
 
     try {
-      await createComment(postId, user.id, newComment);
+      await createComment(postId, user.id, commentText);
 
       // Refresh comments for this post
       const comments = await getComments(postId);
@@ -333,7 +335,12 @@ export default function Dashboard() {
         [postId]: comments
       }));
 
-      setNewComment('');
+      // Clear the comment text for this specific post
+      setPostCommentTexts(prev => ({
+        ...prev,
+        [postId]: ''
+      }));
+
       toast({
         title: "Success",
         description: "Comment added successfully!"
@@ -830,8 +837,11 @@ export default function Dashboard() {
                                         <div className="flex-1 flex gap-2">
                                           <Input
                                             placeholder="Write a comment..."
-                                            value={newComment}
-                                            onChange={(e) => setNewComment(e.target.value)}
+                                            value={postCommentTexts[post.id] || ''}
+                                            onChange={(e) => setPostCommentTexts(prev => ({
+                                              ...prev,
+                                              [post.id]: e.target.value
+                                            }))}
                                             className="border-white/30 bg-white/20 backdrop-blur-sm focus:border-blue-500 focus:bg-white/30 text-blue-900 placeholder:text-blue-700/50"
                                             onKeyPress={(e) => {
                                               if (e.key === 'Enter' && !e.shiftKey) {
@@ -842,7 +852,7 @@ export default function Dashboard() {
                                           />
                                           <Button
                                             onClick={() => handleComment(post.id)}
-                                            disabled={!newComment.trim()}
+                                            disabled={!postCommentTexts[post.id]?.trim()}
                                             size="sm"
                                             className="bg-blue-600/90 hover:bg-blue-700/90"
                                           >
