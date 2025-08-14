@@ -329,7 +329,8 @@ export default function Network() {
 
               <motion.h1
                 whileHover={{ scale: 1.05 }}
-                className="text-3xl font-bold text-blue-900 tracking-tight drop-shadow-sm"
+                className="text-3xl font-bold text-blue-900 tracking-tight drop-shadow-sm cursor-pointer"
+                onClick={() => navigate('/dashboard')}
               >
                 Lynkr
               </motion.h1>

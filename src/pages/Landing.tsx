@@ -804,7 +804,7 @@ export default function Landing() {
       <nav className="w-full backdrop-blur-xl bg-white/10 border-b border-white/20 shadow-lg z-20 sticky top-0">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="font-bold text-3xl text-blue-900 tracking-tight drop-shadow-sm">
-            <a href="#hero" className="hover:text-blue-600 transition-colors">Lynkr</a>
+            <a href="#hero" className="hover:text-blue-600 transition-colors cursor-pointer">Lynkr</a>
           </div>
           <div className="hidden md:flex gap-8 items-center text-blue-900/80 font-medium">
             <a href="#about" className="hover:text-blue-600 transition-colors backdrop-blur-sm px-3 py-1 rounded-full hover:bg-white/20">About</a>
@@ -1102,7 +1102,7 @@ export default function Landing() {
       {/* Footer with Glassmorphism */}
       <footer className="w-full bg-blue-900/20 backdrop-blur-xl border-t border-white/20 text-blue-900 py-12">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="font-bold text-2xl">Lynkr</span>
+          <a href="#hero" className="font-bold text-2xl hover:text-blue-600 transition-colors cursor-pointer">Lynkr</a>
           <nav className="flex gap-6 text-sm text-blue-800/70">
             <a href="#about" className="hover:text-blue-900 transition-colors">About</a>
             <a href="#features" className="hover:text-blue-900 transition-colors">Features</a>
