@@ -470,14 +470,29 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          {/* <div className="flex items-center space-x-2">
             <Checkbox
               id="is_current"
               checked={formData.is_current}
               onCheckedChange={(checked) => handleChange('is_current', checked)}
             />
             <Label htmlFor="is_current">I currently study here</Label>
-          </div>
+          </div> */}
+          <div className="flex items-center space-x-2">
+  <Checkbox
+    id="is_current"
+    checked={formData.is_current}
+    onCheckedChange={(checked) => handleChange('is_current', checked)}
+    className="border-2 border-gray-400 dark:border-gray-200"
+  />
+  <Label
+    htmlFor="is_current"
+    className="text-gray-800 dark:text-gray-200"
+  >
+    I currently study here
+  </Label>
+</div>
+
 
           <div>
             <Label htmlFor="grade">Grade/GPA</Label>

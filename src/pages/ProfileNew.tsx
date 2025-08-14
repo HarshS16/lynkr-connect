@@ -528,6 +528,60 @@ export default function ProfileNew() {
                         </p>
                       )}
 
+                      {/* Portfolio/Website Section */}
+                      {profile.website ? (
+                        <div className="mb-4 p-4 bg-gradient-to-r from-blue-50/50 to-purple-50/50 rounded-xl border border-blue-200/30">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-blue-600/10 rounded-lg">
+                                <Globe className="h-5 w-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-blue-900">Portfolio & Website</h4>
+                                <a
+                                  href={profile.website}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                                >
+                                  {profile.website.replace(/^https?:\/\//, '')}
+                                </a>
+                              </div>
+                            </div>
+                            <a
+                              href={profile.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 bg-blue-600/90 text-white rounded-lg hover:bg-blue-700/90 transition-colors text-sm font-medium"
+                            >
+                              Visit Site
+                            </a>
+                          </div>
+                        </div>
+                      ) : isOwnProfile ? (
+                        <div className="mb-4 p-4 bg-gradient-to-r from-gray-50/50 to-blue-50/50 rounded-xl border border-gray-200/30 border-dashed">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-gray-400/10 rounded-lg">
+                                <Globe className="h-5 w-5 text-gray-500" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-700">Add Your Portfolio</h4>
+                                <p className="text-gray-600 text-sm">Showcase your work and projects</p>
+                              </div>
+                            </div>
+                            <Button
+                              onClick={() => setEditing(true)}
+                              size="sm"
+                              className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Website
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
+
                       {/* Social Links */}
                       <div className="flex flex-wrap gap-3 mb-4">
                         {profile.website && (
@@ -686,11 +740,16 @@ export default function ProfileNew() {
                             />
                           </div>
                           <div>
-                            <Label htmlFor="website" className="text-blue-900">Website</Label>
+                            <Label htmlFor="website" className="text-blue-900">
+                              Website/Portfolio URL
+                              <span className="text-blue-600 text-sm font-normal ml-2">(Showcase your work)</span>
+                            </Label>
                             <Input
                               id="website"
+                              type="url"
                               value={editForm.website}
                               onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
+                              placeholder="https://yourportfolio.com"
                               className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
                             />
                           </div>
