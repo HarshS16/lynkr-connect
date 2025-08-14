@@ -1,7 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  useProfile,
+  useWorkExperience,
+  useEducation,
+  useAchievements,
+  useCertifications,
+  useSkills
+} from "@/hooks/useProfile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +20,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ThreeBackground } from "@/components/ThreeBackground";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { WorkExperienceForm } from "@/components/profile/WorkExperienceForm";
+import { EducationForm } from "@/components/profile/EducationForm";
+import { SkillsForm } from "@/components/profile/SkillsForm";
 
 import {
   ArrowLeft,
@@ -160,23 +170,27 @@ export default function ProfileNew() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // State variables
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [connections, setConnections] = useState<Connection[]>([]);
-  const [workExperience, setWorkExperience] = useState<WorkExperience[]>([]);
-  const [education, setEducation] = useState<Education[]>([]);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [certifications, setCertifications] = useState<Certification[]>([]);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  
-  const [loading, setLoading] = useState(true);
+  // Use custom hooks for profile data
+  const { profile, loading: profileLoading, updateProfile, isOwnProfile } = useProfile(userId);
+  const { workExperience, loading: workLoading } = useWorkExperience(userId);
+  const { education, loading: eduLoading } = useEducation(userId);
+  const { achievements, loading: achieveLoading } = useAchievements(userId);
+  const { certifications, loading: certLoading } = useCertifications(userId);
+  const { skills, loading: skillsLoading } = useSkills(userId);
+
+  // UI state
   const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeSection, setActiveSection] = useState('about');
-  
+
+  // Form states
+  const [showWorkForm, setShowWorkForm] = useState(false);
+  const [showEducationForm, setShowEducationForm] = useState(false);
+  const [showSkillsForm, setShowSkillsForm] = useState(false);
+  const [editingWorkExp, setEditingWorkExp] = useState<WorkExperience | undefined>();
+  const [editingEducation, setEditingEducation] = useState<Education | undefined>();
+
   const [editForm, setEditForm] = useState({
     full_name: "",
     bio: "",
@@ -188,16 +202,7 @@ export default function ProfileNew() {
     github_url: ""
   });
 
-  const abortControllers = useRef<AbortController[]>([]);
-  const isOwnProfile = user?.id === userId;
-
-  // Cleanup function
-  useEffect(() => {
-    return () => {
-      abortControllers.current.forEach(controller => controller.abort());
-      abortControllers.current = [];
-    };
-  }, []);
+  const loading = profileLoading || workLoading || eduLoading || achieveLoading || certLoading || skillsLoading;
 
   // Redirect to own profile if no userId provided
   useEffect(() => {
@@ -206,178 +211,41 @@ export default function ProfileNew() {
     }
   }, [userId, user, navigate]);
 
-  // Fetch all profile data
+  // Update edit form when profile changes
   useEffect(() => {
-    if (userId) {
-      // Cancel any pending requests
-      abortControllers.current.forEach(controller => controller.abort());
-      abortControllers.current = [];
-
-      const controllers = Array.from({ length: 8 }, () => new AbortController());
-      abortControllers.current.push(...controllers);
-
-      fetchProfile({ signal: controllers[0].signal });
-      fetchUserPosts({ signal: controllers[1].signal });
-      fetchConnections({ signal: controllers[2].signal });
-      fetchWorkExperience({ signal: controllers[3].signal });
-      fetchEducation({ signal: controllers[4].signal });
-      fetchAchievements({ signal: controllers[5].signal });
-      fetchCertifications({ signal: controllers[6].signal });
-      fetchSkills({ signal: controllers[7].signal });
-    }
-  }, [userId, user?.id]);
-
-  // Fetch functions
-  const fetchProfile = async (options: { signal?: AbortSignal } = {}) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .abortSignal(options.signal)
-        .single();
-
-      if (error) throw error;
-      setProfile(data);
+    if (profile) {
       setEditForm({
-        full_name: data.full_name,
-        bio: data.bio || "",
-        current_position: data.current_position || "",
-        company: data.company || "",
-        location: data.location || "",
-        website: data.website || "",
-        linkedin_url: data.linkedin_url || "",
-        github_url: data.github_url || ""
+        full_name: profile.full_name,
+        bio: profile.bio || "",
+        current_position: profile.current_position || "",
+        company: profile.company || "",
+        location: profile.location || "",
+        website: profile.website || "",
+        linkedin_url: profile.linkedin_url || "",
+        github_url: profile.github_url || ""
       });
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load profile",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
     }
+  }, [profile]);
+
+  // Handler functions
+  const handleEditWorkExperience = (workExp: WorkExperience) => {
+    setEditingWorkExp(workExp);
+    setShowWorkForm(true);
   };
 
-  const fetchUserPosts = async (options: { signal?: AbortSignal } = {}) => {
-    try {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("author_id", userId)
-        .abortSignal(options.signal)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setPosts(data || []);
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    }
+  const handleEditEducation = (edu: Education) => {
+    setEditingEducation(edu);
+    setShowEducationForm(true);
   };
 
-  const fetchConnections = async (options?: { signal?: AbortSignal }) => {
-    try {
-      const { data, error } = await supabase
-        .from("connections")
-        .select(`
-          id,
-          requester_id,
-          addressee_id,
-          status,
-          created_at,
-          requester:profiles!requester_id(full_name, avatar_url, user_id),
-          addressee:profiles!addressee_id(full_name, avatar_url, user_id)
-        `)
-        .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
-        .abortSignal(options?.signal);
-
-      if (error) throw error;
-      setConnections(data || []);
-    } catch (error) {
-      console.error("Error fetching connections:", error);
-    }
+  const handleCloseWorkForm = () => {
+    setShowWorkForm(false);
+    setEditingWorkExp(undefined);
   };
 
-  const fetchWorkExperience = async (options: { signal?: AbortSignal } = {}) => {
-    try {
-      const { data, error } = await supabase
-        .from("work_experience")
-        .select("*")
-        .eq("user_id", userId)
-        .abortSignal(options.signal)
-        .order("start_date", { ascending: false });
-
-      if (error) throw error;
-      setWorkExperience(data || []);
-    } catch (error) {
-      console.error("Error fetching work experience:", error);
-    }
-  };
-
-  const fetchEducation = async (options: { signal?: AbortSignal } = {}) => {
-    try {
-      const { data, error } = await supabase
-        .from("education")
-        .select("*")
-        .eq("user_id", userId)
-        .abortSignal(options.signal)
-        .order("start_date", { ascending: false });
-
-      if (error) throw error;
-      setEducation(data || []);
-    } catch (error) {
-      console.error("Error fetching education:", error);
-    }
-  };
-
-  const fetchAchievements = async (options: { signal?: AbortSignal } = {}) => {
-    try {
-      const { data, error } = await supabase
-        .from("achievements")
-        .select("*")
-        .eq("user_id", userId)
-        .abortSignal(options.signal)
-        .order("date_achieved", { ascending: false });
-
-      if (error) throw error;
-      setAchievements(data || []);
-    } catch (error) {
-      console.error("Error fetching achievements:", error);
-    }
-  };
-
-  const fetchCertifications = async (options: { signal?: AbortSignal } = {}) => {
-    try {
-      const { data, error } = await supabase
-        .from("certifications")
-        .select("*")
-        .eq("user_id", userId)
-        .abortSignal(options.signal)
-        .order("issue_date", { ascending: false });
-
-      if (error) throw error;
-      setCertifications(data || []);
-    } catch (error) {
-      console.error("Error fetching certifications:", error);
-    }
-  };
-
-  const fetchSkills = async (options: { signal?: AbortSignal } = {}) => {
-    try {
-      const { data, error } = await supabase
-        .from("skills")
-        .select("*")
-        .eq("user_id", userId)
-        .abortSignal(options.signal)
-        .order("name", { ascending: true });
-
-      if (error) throw error;
-      setSkills(data || []);
-    } catch (error) {
-      console.error("Error fetching skills:", error);
-    }
+  const handleCloseEducationForm = () => {
+    setShowEducationForm(false);
+    setEditingEducation(undefined);
   };
 
   // Handler functions
@@ -402,39 +270,11 @@ export default function ProfileNew() {
   const handleSaveProfile = async () => {
     if (!profile || !isOwnProfile) return;
 
-    setSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: editForm.full_name,
-          bio: editForm.bio,
-          current_position: editForm.current_position,
-          company: editForm.company,
-          location: editForm.location,
-          website: editForm.website,
-          linkedin_url: editForm.linkedin_url,
-          github_url: editForm.github_url
-        })
-        .eq("user_id", userId);
-
-      if (error) throw error;
-
-      setProfile(prev => prev ? { ...prev, ...editForm } : null);
+      await updateProfile(editForm);
       setEditing(false);
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been successfully updated",
-      });
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast({
-        title: "Update failed",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -911,6 +751,7 @@ export default function ProfileNew() {
                         {isOwnProfile && (
                           <Button
                             size="sm"
+                            onClick={() => setShowWorkForm(true)}
                             className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
                           >
                             <Plus className="h-4 w-4 mr-2" />
@@ -953,6 +794,7 @@ export default function ProfileNew() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
+                                      onClick={() => handleEditWorkExperience(exp)}
                                       className="text-blue-600 hover:bg-blue-50/50"
                                     >
                                       <Edit2 className="h-4 w-4" />
@@ -976,6 +818,7 @@ export default function ProfileNew() {
                           <p className="text-blue-700/70">No work experience added yet</p>
                           {isOwnProfile && (
                             <Button
+                              onClick={() => setShowWorkForm(true)}
                               className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
                             >
                               <Plus className="h-4 w-4 mr-2" />
@@ -1007,6 +850,7 @@ export default function ProfileNew() {
                         {isOwnProfile && (
                           <Button
                             size="sm"
+                            onClick={() => setShowEducationForm(true)}
                             className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
                           >
                             <Plus className="h-4 w-4 mr-2" />
@@ -1322,6 +1166,7 @@ export default function ProfileNew() {
                         {isOwnProfile && (
                           <Button
                             size="sm"
+                            onClick={() => setShowSkillsForm(true)}
                             className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
                           >
                             <Plus className="h-4 w-4 mr-2" />
@@ -1398,6 +1243,29 @@ export default function ProfileNew() {
           </div>
         )}
       </main>
+
+      {/* Form Dialogs */}
+      {userId && (
+        <>
+          <WorkExperienceForm
+            isOpen={showWorkForm}
+            onClose={handleCloseWorkForm}
+            workExperience={editingWorkExp}
+            userId={userId}
+          />
+          <EducationForm
+            isOpen={showEducationForm}
+            onClose={handleCloseEducationForm}
+            education={editingEducation}
+            userId={userId}
+          />
+          <SkillsForm
+            isOpen={showSkillsForm}
+            onClose={() => setShowSkillsForm(false)}
+            userId={userId}
+          />
+        </>
+      )}
     </div>
   );
 }
