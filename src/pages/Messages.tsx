@@ -71,13 +71,29 @@ export default function Messages() {
         >
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <Link
-                to="/dashboard"
-                className="flex items-center gap-3 text-blue-900 hover:text-blue-700 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span className="font-medium">Back to Dashboard</span>
-              </Link>
+              {/* Dashboard Navigation */}
+              <div className="flex items-center gap-6">
+                <Link
+                  to="/dashboard"
+                  className="flex items-center gap-2 text-blue-900 hover:text-blue-700 transition-colors font-medium"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Dashboard
+                </Link>
+                <Link
+                  to="/network"
+                  className="text-blue-900/80 hover:text-blue-700 transition-colors font-medium"
+                >
+                  Network
+                </Link>
+                <Link
+                  to="/jobs"
+                  className="text-blue-900/80 hover:text-blue-700 transition-colors font-medium"
+                >
+                  Jobs
+                </Link>
+                <span className="text-blue-700 font-semibold">Messages</span>
+              </div>
 
               <motion.h1
                 whileHover={{ scale: 1.05 }}
@@ -124,6 +140,14 @@ export default function Messages() {
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Network
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-900 hover:text-blue-700 hover:bg-white/20 relative"
+                >
+                  <Bell className="h-4 w-4" />
                 </Button>
 
                 <Button
