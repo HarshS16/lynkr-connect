@@ -144,10 +144,17 @@ export const useWorkExperience = (userId?: string) => {
       setError(null);
       const data = await workExperienceAPI.getWorkExperience(targetUserId);
       setWorkExperience(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch work experience';
-      setError(errorMessage);
-      console.error('Error fetching work experience:', err);
+    } catch (err: any) {
+      // Handle case where table doesn't exist yet (404 error)
+      if (err?.code === 'PGRST116' || err?.message?.includes('404')) {
+        console.log('Work experience table not found, using empty array');
+        setWorkExperience([]);
+        setError(null);
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch work experience';
+        setError(errorMessage);
+        console.error('Error fetching work experience:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -246,10 +253,17 @@ export const useEducation = (userId?: string) => {
       setError(null);
       const data = await educationAPI.getEducation(targetUserId);
       setEducation(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch education';
-      setError(errorMessage);
-      console.error('Error fetching education:', err);
+    } catch (err: any) {
+      // Handle case where table doesn't exist yet (404 error)
+      if (err?.code === 'PGRST116' || err?.message?.includes('404')) {
+        console.log('Education table not found, using empty array');
+        setEducation([]);
+        setError(null);
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch education';
+        setError(errorMessage);
+        console.error('Error fetching education:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -348,10 +362,17 @@ export const useAchievements = (userId?: string) => {
       setError(null);
       const data = await achievementsAPI.getAchievements(targetUserId);
       setAchievements(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch achievements';
-      setError(errorMessage);
-      console.error('Error fetching achievements:', err);
+    } catch (err: any) {
+      // Handle case where table doesn't exist yet (404 error)
+      if (err?.code === 'PGRST116' || err?.message?.includes('404')) {
+        console.log('Achievements table not found, using empty array');
+        setAchievements([]);
+        setError(null);
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch achievements';
+        setError(errorMessage);
+        console.error('Error fetching achievements:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -450,10 +471,17 @@ export const useCertifications = (userId?: string) => {
       setError(null);
       const data = await certificationsAPI.getCertifications(targetUserId);
       setCertifications(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch certifications';
-      setError(errorMessage);
-      console.error('Error fetching certifications:', err);
+    } catch (err: any) {
+      // Handle case where table doesn't exist yet (404 error)
+      if (err?.code === 'PGRST116' || err?.message?.includes('404')) {
+        console.log('Certifications table not found, using empty array');
+        setCertifications([]);
+        setError(null);
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch certifications';
+        setError(errorMessage);
+        console.error('Error fetching certifications:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -552,10 +580,17 @@ export const useSkills = (userId?: string) => {
       setError(null);
       const data = await skillsAPI.getSkills(targetUserId);
       setSkills(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch skills';
-      setError(errorMessage);
-      console.error('Error fetching skills:', err);
+    } catch (err: any) {
+      // Handle case where table doesn't exist yet (404 error)
+      if (err?.code === 'PGRST116' || err?.message?.includes('404')) {
+        console.log('Skills table not found, using empty array');
+        setSkills([]);
+        setError(null);
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch skills';
+        setError(errorMessage);
+        console.error('Error fetching skills:', err);
+      }
     } finally {
       setLoading(false);
     }

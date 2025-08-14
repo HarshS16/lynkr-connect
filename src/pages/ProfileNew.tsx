@@ -172,11 +172,16 @@ export default function ProfileNew() {
 
   // Use custom hooks for profile data
   const { profile, loading: profileLoading, updateProfile, isOwnProfile } = useProfile(userId);
-  const { workExperience, loading: workLoading } = useWorkExperience(userId);
-  const { education, loading: eduLoading } = useEducation(userId);
-  const { achievements, loading: achieveLoading } = useAchievements(userId);
-  const { certifications, loading: certLoading } = useCertifications(userId);
-  const { skills, loading: skillsLoading } = useSkills(userId);
+
+  // Use hooks with fallback for new tables that might not exist yet
+  const { workExperience = [], loading: workLoading } = useWorkExperience(userId);
+  const { education = [], loading: eduLoading } = useEducation(userId);
+  const { achievements = [], loading: achieveLoading } = useAchievements(userId);
+  const { certifications = [], loading: certLoading } = useCertifications(userId);
+  const { skills = [], loading: skillsLoading } = useSkills(userId);
+
+  // Mock connections data for now (until we implement connections hook)
+  const connections: Connection[] = [];
 
   // UI state
   const [editing, setEditing] = useState(false);
@@ -202,7 +207,7 @@ export default function ProfileNew() {
     github_url: ""
   });
 
-  const loading = profileLoading || workLoading || eduLoading || achieveLoading || certLoading || skillsLoading;
+  const loading = profileLoading;
 
   // Redirect to own profile if no userId provided
   useEffect(() => {
@@ -424,7 +429,7 @@ export default function ProfileNew() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {profile ? (
+        {!loading && profile ? (
           <div className="max-w-6xl mx-auto">
             {/* Profile Header */}
             <motion.div
