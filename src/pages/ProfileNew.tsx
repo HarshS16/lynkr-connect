@@ -23,6 +23,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { WorkExperienceForm } from "@/components/profile/WorkExperienceForm";
 import { EducationForm } from "@/components/profile/EducationForm";
 import { SkillsForm } from "@/components/profile/SkillsForm";
+import { AchievementForm } from "@/components/profile/AchievementForm";
+import { CertificationForm } from "@/components/profile/CertificationForm";
 
 import {
   ArrowLeft,
@@ -193,8 +195,12 @@ export default function ProfileNew() {
   const [showWorkForm, setShowWorkForm] = useState(false);
   const [showEducationForm, setShowEducationForm] = useState(false);
   const [showSkillsForm, setShowSkillsForm] = useState(false);
+  const [showAchievementForm, setShowAchievementForm] = useState(false);
+  const [showCertificationForm, setShowCertificationForm] = useState(false);
   const [editingWorkExp, setEditingWorkExp] = useState<WorkExperience | undefined>();
   const [editingEducation, setEditingEducation] = useState<Education | undefined>();
+  const [editingAchievement, setEditingAchievement] = useState<Achievement | undefined>();
+  const [editingCertification, setEditingCertification] = useState<Certification | undefined>();
 
   const [editForm, setEditForm] = useState({
     full_name: "",
@@ -251,6 +257,26 @@ export default function ProfileNew() {
   const handleCloseEducationForm = () => {
     setShowEducationForm(false);
     setEditingEducation(undefined);
+  };
+
+  const handleEditAchievement = (achievement: Achievement) => {
+    setEditingAchievement(achievement);
+    setShowAchievementForm(true);
+  };
+
+  const handleCloseAchievementForm = () => {
+    setShowAchievementForm(false);
+    setEditingAchievement(undefined);
+  };
+
+  const handleEditCertification = (certification: Certification) => {
+    setEditingCertification(certification);
+    setShowCertificationForm(true);
+  };
+
+  const handleCloseCertificationForm = () => {
+    setShowCertificationForm(false);
+    setEditingCertification(undefined);
   };
 
   // Handler functions
@@ -905,6 +931,7 @@ export default function ProfileNew() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
+                                      onClick={() => handleEditEducation(edu)}
                                       className="text-blue-600 hover:bg-blue-50/50"
                                     >
                                       <Edit2 className="h-4 w-4" />
@@ -928,6 +955,7 @@ export default function ProfileNew() {
                           <p className="text-blue-700/70">No education added yet</p>
                           {isOwnProfile && (
                             <Button
+                              onClick={() => setShowEducationForm(true)}
                               className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
                             >
                               <Plus className="h-4 w-4 mr-2" />
@@ -959,6 +987,7 @@ export default function ProfileNew() {
                         {isOwnProfile && (
                           <Button
                             size="sm"
+                            onClick={() => setShowAchievementForm(true)}
                             className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
                           >
                             <Plus className="h-4 w-4 mr-2" />
@@ -983,6 +1012,7 @@ export default function ProfileNew() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
+                                      onClick={() => handleEditAchievement(achievement)}
                                       className="text-blue-600 hover:bg-blue-50/50 h-6 w-6 p-0"
                                     >
                                       <Edit2 className="h-3 w-3" />
@@ -1032,6 +1062,7 @@ export default function ProfileNew() {
                           <p className="text-blue-700/70">No achievements added yet</p>
                           {isOwnProfile && (
                             <Button
+                              onClick={() => setShowAchievementForm(true)}
                               className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
                             >
                               <Plus className="h-4 w-4 mr-2" />
@@ -1063,6 +1094,7 @@ export default function ProfileNew() {
                         {isOwnProfile && (
                           <Button
                             size="sm"
+                            onClick={() => setShowCertificationForm(true)}
                             className="bg-blue-600/90 hover:bg-blue-700/90 text-white"
                           >
                             <Plus className="h-4 w-4 mr-2" />
@@ -1117,6 +1149,7 @@ export default function ProfileNew() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
+                                      onClick={() => handleEditCertification(cert)}
                                       className="text-blue-600 hover:bg-blue-50/50"
                                     >
                                       <Edit2 className="h-4 w-4" />
@@ -1140,6 +1173,7 @@ export default function ProfileNew() {
                           <p className="text-blue-700/70">No certifications added yet</p>
                           {isOwnProfile && (
                             <Button
+                              onClick={() => setShowCertificationForm(true)}
                               className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
                             >
                               <Plus className="h-4 w-4 mr-2" />
@@ -1216,6 +1250,7 @@ export default function ProfileNew() {
                           <p className="text-blue-700/70">No skills added yet</p>
                           {isOwnProfile && (
                             <Button
+                              onClick={() => setShowSkillsForm(true)}
                               className="mt-4 bg-blue-600/90 hover:bg-blue-700/90 text-white"
                             >
                               <Plus className="h-4 w-4 mr-2" />
@@ -1267,6 +1302,18 @@ export default function ProfileNew() {
           <SkillsForm
             isOpen={showSkillsForm}
             onClose={() => setShowSkillsForm(false)}
+            userId={userId}
+          />
+          <AchievementForm
+            isOpen={showAchievementForm}
+            onClose={handleCloseAchievementForm}
+            achievement={editingAchievement}
+            userId={userId}
+          />
+          <CertificationForm
+            isOpen={showCertificationForm}
+            onClose={handleCloseCertificationForm}
+            certification={editingCertification}
             userId={userId}
           />
         </>

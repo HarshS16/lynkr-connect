@@ -163,19 +163,29 @@ export const useWorkExperience = (userId?: string) => {
   const createWorkExperience = async (workExp: Omit<WorkExperience, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const newWorkExp = await workExperienceAPI.createWorkExperience(workExp);
+      // Optimistically update the UI
       setWorkExperience(prev => [newWorkExp, ...prev]);
       toast({
         title: 'Work experience added',
         description: 'Your work experience has been added successfully.',
       });
       return newWorkExp;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add work experience';
-      toast({
-        title: 'Add failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+    } catch (err: any) {
+      // If table doesn't exist, show helpful message
+      if (err?.code === 'PGRST116' || err?.message?.includes('404')) {
+        toast({
+          title: 'Database setup required',
+          description: 'Please run the SQL migration to enable this feature.',
+          variant: 'destructive',
+        });
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to add work experience';
+        toast({
+          title: 'Add failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
       throw err;
     }
   };
@@ -272,19 +282,29 @@ export const useEducation = (userId?: string) => {
   const createEducation = async (edu: Omit<Education, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const newEducation = await educationAPI.createEducation(edu);
+      // Optimistically update the UI
       setEducation(prev => [newEducation, ...prev]);
       toast({
         title: 'Education added',
         description: 'Your education has been added successfully.',
       });
       return newEducation;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add education';
-      toast({
-        title: 'Add failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+    } catch (err: any) {
+      // If table doesn't exist, show helpful message
+      if (err?.code === 'PGRST116' || err?.message?.includes('404')) {
+        toast({
+          title: 'Database setup required',
+          description: 'Please run the SQL migration to enable this feature.',
+          variant: 'destructive',
+        });
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to add education';
+        toast({
+          title: 'Add failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
       throw err;
     }
   };
@@ -599,19 +619,29 @@ export const useSkills = (userId?: string) => {
   const createSkill = async (skill: Omit<Skill, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const newSkill = await skillsAPI.createSkill(skill);
+      // Optimistically update the UI
       setSkills(prev => [...prev, newSkill].sort((a, b) => a.name.localeCompare(b.name)));
       toast({
         title: 'Skill added',
         description: 'Your skill has been added successfully.',
       });
       return newSkill;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add skill';
-      toast({
-        title: 'Add failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+    } catch (err: any) {
+      // If table doesn't exist, show helpful message
+      if (err?.code === 'PGRST116' || err?.message?.includes('404')) {
+        toast({
+          title: 'Database setup required',
+          description: 'Please run the SQL migration to enable this feature.',
+          variant: 'destructive',
+        });
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to add skill';
+        toast({
+          title: 'Add failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
       throw err;
     }
   };
@@ -619,19 +649,29 @@ export const useSkills = (userId?: string) => {
   const createSkills = async (skillsData: Omit<Skill, 'id' | 'created_at' | 'updated_at'>[]) => {
     try {
       const newSkills = await skillsAPI.createSkills(skillsData);
+      // Optimistically update the UI
       setSkills(prev => [...prev, ...newSkills].sort((a, b) => a.name.localeCompare(b.name)));
       toast({
         title: 'Skills added',
         description: `${newSkills.length} skills have been added successfully.`,
       });
       return newSkills;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add skills';
-      toast({
-        title: 'Add failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+    } catch (err: any) {
+      // If table doesn't exist, show helpful message
+      if (err?.code === 'PGRST116' || err?.message?.includes('404')) {
+        toast({
+          title: 'Database setup required',
+          description: 'Please run the SQL migration to enable this feature.',
+          variant: 'destructive',
+        });
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to add skills';
+        toast({
+          title: 'Add failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
       throw err;
     }
   };
