@@ -409,6 +409,8 @@ export default function Dashboard() {
       navigate('/network');
     } else if (label === 'Jobs') {
       navigate('/jobs');
+    } else if (label === 'Posts') {
+      navigate('/posts');
     } else if (label === 'Messages') {
       navigate('/messages');
     } else if (label === 'Notifications') {
@@ -423,8 +425,9 @@ export default function Dashboard() {
     { id: 1, label: 'Home', icon: Home, active: activeTab === 0 },
     { id: 2, label: 'Network', icon: Users, active: activeTab === 1 },
     { id: 3, label: 'Jobs', icon: Briefcase, active: activeTab === 2 },
-    { id: 4, label: 'Messages', icon: MessageCircle, active: activeTab === 3 },
-    { id: 5, label: 'Notifications', icon: Bell, active: activeTab === 4 },
+    { id: 4, label: 'Posts', icon: Plus, active: activeTab === 3 },
+    { id: 5, label: 'Messages', icon: MessageCircle, active: activeTab === 4 },
+    { id: 6, label: 'Notifications', icon: Bell, active: activeTab === 5 },
   ];
 
   return (
