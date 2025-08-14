@@ -372,7 +372,11 @@ export default function Dashboard() {
     if (!user?.id) return;
 
     try {
-      await deleteComment(commentId);
+      const { error } = await deleteComment(commentId, user.id);
+
+      if (error) {
+        throw error;
+      }
 
       // Refresh comments for this post
       const comments = await getComments(postId);

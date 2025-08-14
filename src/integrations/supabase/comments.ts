@@ -72,11 +72,18 @@ export async function getCommentsCount(postId: string) {
 }
 
 export async function deleteComment(commentId: string, userId: string) {
-  return supabase
+  const { error } = await supabase
     .from('comments')
     .delete()
     .eq('id', commentId)
     .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error deleting comment:', error);
+    return { data: null, error };
+  }
+
+  return { data: true, error: null };
 }
 
 export async function updateComment(commentId: string, userId: string, content: string) {
