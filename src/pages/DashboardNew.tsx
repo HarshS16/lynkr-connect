@@ -32,6 +32,7 @@ import {
   Briefcase,
   Calendar,
   X,
+  Trash2,
   Camera,
   Edit3,
   Menu,
@@ -942,9 +943,9 @@ export default function Dashboard() {
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleDeleteComment(comment.id, post.id)}
-                                                    className="absolute top-2 right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600"
+                                                    className="absolute top-2 right-2 h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600"
                                                   >
-                                                    <X className="h-3 w-3" />
+                                                    <Trash2 className="h-4 w-4" />
                                                   </Button>
                                                 )}
                                               </div>
