@@ -92,8 +92,7 @@ export default function Dashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userPostsCount, setUserPostsCount] = useState(0);
-  const [showComments, setShowComments] = useState<string | null>(null);
-  const [commentsAlwaysVisible, setCommentsAlwaysVisible] = useState(true); // Show comments by default
+  const [showComments, setShowComments] = useState<{[key: string]: boolean}>({});
   const [newComment, setNewComment] = useState('');
   const [postCommentTexts, setPostCommentTexts] = useState<{[key: string]: string}>({});
   const [showLikesDialog, setShowLikesDialog] = useState(false);
@@ -424,6 +423,13 @@ export default function Dashboard() {
     } finally {
       setLikesDialogLoading(false);
     }
+  };
+
+  const toggleComments = (postId: string) => {
+    setShowComments(prev => ({
+      ...prev,
+      [postId]: !prev[postId]
+    }));
   };
 
   const handleSidebarClick = (index: number, label: string) => {
@@ -876,7 +882,7 @@ export default function Dashboard() {
                                   </div>
                                   <motion.button
                                     whileHover={{ scale: 1.05 }}
-                                    onClick={() => setCommentsAlwaysVisible(!commentsAlwaysVisible)}
+                                    onClick={() => toggleComments(post.id)}
                                     className="flex items-center gap-2 hover:text-blue-600 transition-colors"
                                   >
                                     <MessageSquare className="h-4 w-4" />
@@ -899,9 +905,9 @@ export default function Dashboard() {
                                   </motion.button>
                                 </div>
 
-                                {/* Comments Section - Always Visible */}
+                                {/* Comments Section */}
                                 <AnimatePresence>
-                                  {commentsAlwaysVisible && (
+                                  {showComments[post.id] && (
                                     <motion.div
                                       initial={{ opacity: 0, height: 0 }}
                                       animate={{ opacity: 1, height: 'auto' }}
