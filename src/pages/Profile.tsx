@@ -260,60 +260,25 @@ export default function Profile() {
 
   const fetchConnections = async (options?: { signal?: AbortSignal }) => {
     try {
-      // Get basic connections data first
-      const { data: connectionsData, error: connectionsError } = await supabase
-        .from("connections")
-        .select("id, requester_id, addressee_id, status, created_at")
-        .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
-        .eq('status', 'accepted')
-        .abortSignal(options?.signal);
+      const { data, error } = await getConnections(userId!);
 
-      if (connectionsError) {
-        console.error("Error fetching connections:", connectionsError);
+      if (error) {
+        console.error("Error fetching connections:", error);
         setConnections([]);
         return;
       }
 
-      if (!connectionsData || connectionsData.length === 0) {
+      if (!data || data.length === 0) {
         setConnections([]);
         return;
       }
 
-      // Fetch profile data for each connection
-      const connectionsWithProfiles = await Promise.all(
-        connectionsData.map(async (conn) => {
-          const otherUserId = conn.requester_id === userId ? conn.addressee_id : conn.requester_id;
-
-          try {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('user_id, full_name, avatar_url')
-              .eq('user_id', otherUserId)
-              .single();
-
-            return {
-              ...conn,
-              requester: conn.requester_id === otherUserId ? profileData : null,
-              addressee: conn.addressee_id === otherUserId ? profileData : null
-            };
-          } catch (error) {
-            // If profile fetch fails, still include the connection with minimal data
-            return {
-              ...conn,
-              requester: conn.requester_id === otherUserId ? {
-                user_id: otherUserId,
-                full_name: 'Unknown User',
-                avatar_url: null
-              } : null,
-              addressee: conn.addressee_id === otherUserId ? {
-                user_id: otherUserId,
-                full_name: 'Unknown User',
-                avatar_url: null
-              } : null
-            };
-          }
-        })
-      );
+      // Transform the data to match the existing structure
+      const connectionsWithProfiles = data.map(conn => ({
+        ...conn,
+        requester: conn.requester,
+        addressee: conn.addressee
+      }));
 
       setConnections(connectionsWithProfiles);
     } catch (error) {
