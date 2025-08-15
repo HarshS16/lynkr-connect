@@ -267,12 +267,13 @@ export default function Profile() {
         addressee_id,
         status,
         created_at,
-        requester:profiles!requester_id(full_name, avatar_url, user_id),
-        addressee:profiles!addressee_id(full_name, avatar_url, user_id)
+        requester:profiles!requester_id(full_name, avatar_url, user_id, current_position, company),
+        addressee:profiles!addressee_id(full_name, avatar_url, user_id, current_position, company)
       `)
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+      .eq('status', 'accepted')
       .abortSignal(options?.signal);
-    
+
     if (error) {
       console.error("Error fetching connections:", error);
     } else {
@@ -903,32 +904,53 @@ export default function Profile() {
       
       {/* Connections Dialog */}
       <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
-        <DialogContent>
+        <DialogContent className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 shadow-2xl max-w-md">
           <DialogHeader>
-            <DialogTitle>Connections</DialogTitle>
+            <DialogTitle className="text-white font-semibold text-lg">Connections</DialogTitle>
           </DialogHeader>
-          <ul className="space-y-4">
+          <div className="max-h-96 overflow-y-auto">
             {acceptedConnections.length > 0 ? (
-              acceptedConnections.map((conn) => {
-                const otherUser = conn.requester_id === userId ? conn.addressee : conn.requester;
-                return (
-                  <li key={conn.id} className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarImage src={otherUser?.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {otherUser?.full_name?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Link to={`/profile/${otherUser?.user_id}`} className="font-medium hover:underline">
-                      {otherUser?.full_name}
-                    </Link>
-                  </li>
-                );
-              })
+              <div className="space-y-2">
+                {acceptedConnections.map((conn) => {
+                  const otherUser = conn.requester_id === userId ? conn.addressee : conn.requester;
+                  return (
+                    <motion.div
+                      key={conn.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800/50 transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-700/30"
+                      onClick={() => {
+                        navigate(`/profile/${otherUser?.user_id}`);
+                        setConnectionsOpen(false);
+                      }}
+                    >
+                      <Avatar className="h-10 w-10 border-2 border-gray-600/50">
+                        <AvatarImage src={otherUser?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-blue-600 text-white font-medium">
+                          {otherUser?.full_name?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-white hover:text-blue-400 transition-colors">
+                          {otherUser?.full_name || "Unknown User"}
+                        </h4>
+                        {otherUser?.current_position && (
+                          <p className="text-sm text-gray-400">
+                            {otherUser.current_position}
+                            {otherUser?.company && ` at ${otherUser.company}`}
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
             ) : (
-              <p className="text-center">No connections found.</p>
+              <div className="text-center py-8">
+                <p className="text-gray-400">No connections found.</p>
+              </div>
             )}
-          </ul>
+          </div>
         </DialogContent>
       </Dialog>
 
