@@ -728,12 +728,13 @@ export default function Profile() {
                           {profile.bio && <p className="text-gray-600 mt-2">{profile.bio}</p>}
                           {/* Connections count and dialog trigger */}
                           <div className="mt-2">
-                            <span
-                              className="cursor-pointer text-blue-600 hover:underline font-medium"
+                            <Button
+                              variant="ghost"
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium p-0 h-auto"
                               onClick={() => setConnectionsOpen(true)}
                             >
-                              {acceptedConnections.length} Connections
-                            </span>
+                              {acceptedConnections.length} {acceptedConnections.length === 1 ? 'Connection' : 'Connections'}
+                            </Button>
                           </div>
                           <p className="text-sm text-gray-500 mt-2">
                             Member since {format(new Date(profile.created_at), 'MMM yyyy')}
