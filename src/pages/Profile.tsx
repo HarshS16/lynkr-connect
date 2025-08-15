@@ -259,25 +259,82 @@ export default function Profile() {
   }, [userId, user, navigate]);
 
   const fetchConnections = async (options?: { signal?: AbortSignal }) => {
-    const { data, error } = await supabase
-      .from("connections")
-      .select(`
-        id,
-        requester_id,
-        addressee_id,
-        status,
-        created_at,
-        requester:profiles!requester_id(full_name, avatar_url, user_id, current_position, company),
-        addressee:profiles!addressee_id(full_name, avatar_url, user_id, current_position, company)
-      `)
-      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
-      .eq('status', 'accepted')
-      .abortSignal(options?.signal);
+    console.log("Fetching connections for userId:", userId);
 
-    if (error) {
-      console.error("Error fetching connections:", error);
-    } else {
-      setConnections(data || []);
+    try {
+      // First, get basic connections data
+      const { data: connectionsData, error: connectionsError } = await supabase
+        .from("connections")
+        .select(`
+          id,
+          requester_id,
+          addressee_id,
+          status,
+          created_at
+        `)
+        .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+        .eq('status', 'accepted')
+        .abortSignal(options?.signal);
+
+      if (connectionsError) {
+        console.error("Error fetching connections:", connectionsError);
+        setConnections([]);
+        return;
+      }
+
+      console.log("Fetched connections data:", connectionsData);
+
+      if (!connectionsData || connectionsData.length === 0) {
+        console.log("No connections found");
+        setConnections([]);
+        return;
+      }
+
+      // Then fetch profile data for each connection
+      const connectionsWithProfiles = await Promise.all(
+        connectionsData.map(async (conn) => {
+          const otherUserId = conn.requester_id === userId ? conn.addressee_id : conn.requester_id;
+
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, avatar_url, current_position, company')
+            .eq('user_id', otherUserId)
+            .single();
+
+          if (profileError) {
+            console.error('Error fetching profile for connection:', profileError);
+            return {
+              ...conn,
+              requester: conn.requester_id === otherUserId ? {
+                user_id: otherUserId,
+                full_name: 'Unknown User',
+                avatar_url: null,
+                current_position: null,
+                company: null
+              } : null,
+              addressee: conn.addressee_id === otherUserId ? {
+                user_id: otherUserId,
+                full_name: 'Unknown User',
+                avatar_url: null,
+                current_position: null,
+                company: null
+              } : null
+            };
+          }
+
+          return {
+            ...conn,
+            requester: conn.requester_id === otherUserId ? profileData : null,
+            addressee: conn.addressee_id === otherUserId ? profileData : null
+          };
+        })
+      );
+
+      console.log("Connections with profiles:", connectionsWithProfiles);
+      setConnections(connectionsWithProfiles);
+    } catch (error) {
+      console.error("Error in fetchConnections:", error);
+      setConnections([]);
     }
   };
 
@@ -558,6 +615,9 @@ export default function Profile() {
   };
 
   const acceptedConnections = connections.filter((c) => c.status === "accepted");
+  console.log("All connections:", connections);
+  console.log("Accepted connections:", acceptedConnections);
+  console.log("Accepted connections count:", acceptedConnections.length);
   
   // Check if a connection request is pending or accepted
   const hasConnection = connections.some(
