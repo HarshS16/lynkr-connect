@@ -63,8 +63,19 @@ export async function hasLiked(postId: string, userId: string) {
 export async function getLikers(postId: string) {
   const { data, error } = await supabase
     .from('likes')
-    .select('user_id, profiles(full_name, avatar_url)')
-    .eq('post_id', postId);
+    .select(`
+      user_id,
+      created_at,
+      profiles:profiles!likes_user_id_fkey (
+        user_id,
+        full_name,
+        avatar_url,
+        current_position,
+        company
+      )
+    `)
+    .eq('post_id', postId)
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching likers:', error);

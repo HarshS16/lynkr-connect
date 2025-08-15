@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { likePost, unlikePost, getLikesCount, hasLiked } from '@/integrations/supabase/likes';
+import { likePost, unlikePost, getLikesCount, hasLiked, getLikers } from '@/integrations/supabase/likes';
 import { createComment, getComments } from '@/integrations/supabase/comments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,6 +57,9 @@ export default function Posts() {
   const [postComments, setPostComments] = useState<{[key: string]: any[]}>({});
   const [showComments, setShowComments] = useState<{[key: string]: boolean}>({});
   const [newComment, setNewComment] = useState<{[key: string]: string}>({});
+  const [showLikesDialog, setShowLikesDialog] = useState(false);
+  const [selectedPostLikers, setSelectedPostLikers] = useState<any[]>([]);
+  const [likesDialogLoading, setLikesDialogLoading] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -271,6 +274,25 @@ export default function Posts() {
     }));
   };
 
+  const handleShowLikes = async (postId: string) => {
+    setLikesDialogLoading(true);
+    setShowLikesDialog(true);
+
+    try {
+      const likers = await getLikers(postId);
+      setSelectedPostLikers(likers);
+    } catch (error) {
+      console.error('Error fetching likers:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load likes",
+        variant: "destructive"
+      });
+    } finally {
+      setLikesDialogLoading(false);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -483,20 +505,29 @@ export default function Posts() {
                           
                           {/* Post actions */}
                           <div className="flex items-center gap-6 pt-3 border-t border-white/20">
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              onClick={() => handleLike(post.id)}
-                              className={`flex items-center gap-2 transition-colors ${
-                                postLikes[post.id]?.userLiked
-                                  ? 'text-red-500'
-                                  : 'hover:text-red-500'
-                              }`}
-                            >
-                              <Heart className={`h-4 w-4 ${postLikes[post.id]?.userLiked ? 'fill-current' : ''}`} />
-                              <span className="text-sm">
-                                {postLikes[post.id]?.count || 0} {postLikes[post.id]?.count === 1 ? 'Like' : 'Likes'}
-                              </span>
-                            </motion.button>
+                            <div className="flex items-center gap-2">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                onClick={() => handleLike(post.id)}
+                                className={`flex items-center gap-2 transition-colors ${
+                                  postLikes[post.id]?.userLiked
+                                    ? 'text-red-500'
+                                    : 'hover:text-red-500'
+                                }`}
+                              >
+                                <Heart className={`h-4 w-4 ${postLikes[post.id]?.userLiked ? 'fill-current' : ''}`} />
+                              </motion.button>
+                              {postLikes[post.id]?.count > 0 ? (
+                                <button
+                                  onClick={() => handleShowLikes(post.id)}
+                                  className="text-sm hover:underline transition-colors"
+                                >
+                                  {postLikes[post.id]?.count} {postLikes[post.id]?.count === 1 ? 'Like' : 'Likes'}
+                                </button>
+                              ) : (
+                                <span className="text-sm">Like</span>
+                              )}
+                            </div>
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               onClick={() => toggleComments(post.id)}
@@ -605,6 +636,59 @@ export default function Posts() {
           )}
         </div>
       </div>
+
+      {/* Likes Dialog */}
+      <Dialog open={showLikesDialog} onOpenChange={setShowLikesDialog}>
+        <DialogContent className="bg-white/95 backdrop-blur-sm border border-white/30 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-blue-900">People who liked this post</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-96 overflow-y-auto">
+            {likesDialogLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-blue-600">Loading...</div>
+              </div>
+            ) : selectedPostLikers.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-blue-700/70">No likes yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {selectedPostLikers.map((liker: any) => (
+                  <motion.div
+                    key={liker.user_id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
+                    onClick={() => {
+                      navigate(`/profile/${liker.profiles?.user_id}`);
+                      setShowLikesDialog(false);
+                    }}
+                  >
+                    <Avatar className="h-10 w-10 border border-white/30">
+                      <AvatarImage src={liker.profiles?.avatar_url} />
+                      <AvatarFallback className="bg-blue-600/90 text-white">
+                        {liker.profiles?.full_name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-blue-900 hover:text-blue-700 transition-colors">
+                        {liker.profiles?.full_name || 'User'}
+                      </h4>
+                      {liker.profiles?.current_position && (
+                        <p className="text-sm text-blue-700/70">
+                          {liker.profiles.current_position}
+                          {liker.profiles?.company && ` at ${liker.profiles.company}`}
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
