@@ -13,6 +13,7 @@ import Jobs from "./pages/Jobs";
 import Messages from "./pages/Messages";
 import Posts from "./pages/Posts";
 import PostView from "./pages/PostView";
+import SavedPosts from "./pages/SavedPosts";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/reset-password";
@@ -60,6 +61,11 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/post/:postId" element={<PostView />} />
+            <Route path="/saved" element={
+              <ProtectedRoute>
+                <SavedPosts />
+              </ProtectedRoute>
+            } />
             <Route path="/analytics" element={
               <ProtectedRoute>
                 <Analytics />

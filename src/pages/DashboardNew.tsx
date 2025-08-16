@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { likePost, unlikePost, getLikesCount, hasLiked, getLikers } from '@/integrations/supabase/likes';
+import { getSavedPostIds, savePost, unsavePost } from '@/integrations/supabase/saved';
 import { createComment, getComments, getCommentsCount, deleteComment } from '@/integrations/supabase/comments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -96,6 +97,7 @@ export default function Dashboard() {
   const [newComment, setNewComment] = useState('');
   const [postCommentTexts, setPostCommentTexts] = useState<{[key: string]: string}>({});
   const [showLikesDialog, setShowLikesDialog] = useState(false);
+  const [savedPostIds, setSavedPostIds] = useState<Record<string, boolean>>({});
   const [selectedPostLikers, setSelectedPostLikers] = useState<any[]>([]);
   const [likesDialogLoading, setLikesDialogLoading] = useState(false);
   const [postComments, setPostComments] = useState<{[key: string]: any[]}>({});
@@ -105,6 +107,14 @@ export default function Dashboard() {
     fetchPosts();
     fetchNotifications();
     fetchUserPostsCount();
+
+    // Fetch saved post ids for current user
+    (async () => {
+      if (user?.id) {
+        const ids = await getSavedPostIds(user.id);
+        setSavedPostIds(ids.reduce((acc, id) => ({ ...acc, [id]: true }), {} as Record<string, boolean>));
+      }
+    })();
 
     // Set up real-time subscription for comments
     const commentsSubscription = supabase
@@ -458,6 +468,8 @@ export default function Dashboard() {
       navigate('/jobs');
     } else if (label === 'Posts') {
       navigate('/posts');
+    } else if (label === 'Saved Posts') {
+      navigate('/saved');
     } else if (label === 'Messages') {
       navigate('/messages');
     } else if (label === 'Notifications') {
@@ -473,8 +485,9 @@ export default function Dashboard() {
     { id: 2, label: 'Network', icon: Users, active: activeTab === 1 },
     { id: 3, label: 'Jobs', icon: Briefcase, active: activeTab === 2 },
     { id: 4, label: 'Posts', icon: Plus, active: activeTab === 3 },
-    { id: 5, label: 'Messages', icon: MessageCircle, active: activeTab === 4 },
-    { id: 6, label: 'Notifications', icon: Bell, active: activeTab === 5 },
+    { id: 5, label: 'Saved Posts', icon: Bookmark, active: activeTab === 6 },
+    { id: 6, label: 'Messages', icon: MessageCircle, active: activeTab === 4 },
+    { id: 7, label: 'Notifications', icon: Bell, active: activeTab === 5 },
   ];
 
   return (
@@ -920,9 +933,26 @@ export default function Dashboard() {
                                   </motion.button>
                                   <motion.button
                                     whileHover={{ scale: 1.05 }}
-                                    className="flex items-center gap-2 hover:text-yellow-600 transition-colors ml-auto"
+                                    onClick={async () => {
+                                      if (!user?.id) return;
+                                      try {
+                                        if (savedPostIds[post.id]) {
+                                          await unsavePost(user.id, post.id);
+                                          setSavedPostIds(prev => ({ ...prev, [post.id]: false }));
+                                          toast({ title: 'Removed from Saved' });
+                                        } else {
+                                          await savePost(user.id, post.id);
+                                          setSavedPostIds(prev => ({ ...prev, [post.id]: true }));
+                                          toast({ title: 'Saved!' });
+                                        }
+                                      } catch (error) {
+                                        console.error('Save/Unsave error', error);
+                                        toast({ title: 'Error', description: 'Unable to update saved posts', variant: 'destructive' });
+                                      }
+                                    }}
+                                    className={`flex items-center gap-2 transition-colors ml-auto ${savedPostIds[post.id] ? 'text-yellow-600' : 'hover:text-yellow-600'}`}
                                   >
-                                    <Bookmark className="h-4 w-4" />
+                                    <Bookmark className={`h-4 w-4 ${savedPostIds[post.id] ? 'fill-current' : ''}`} />
                                   </motion.button>
                                 </div>
 
