@@ -42,6 +42,40 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
     description: education?.description || ''
   });
 
+  // Update form data when education prop changes
+  useEffect(() => {
+    if (education) {
+      setFormData({
+        institution: education.institution || '',
+        degree: education.degree || '',
+        field_of_study: education.field_of_study || '',
+        start_date: education.start_date || '',
+        end_date: education.end_date || '',
+        is_current: education.is_current || false,
+        grade: education.grade || '',
+        description: education.description || ''
+      });
+      setInstitutionSearch(education.institution || '');
+      setDegreeSearch(education.degree || '');
+      setFieldSearch(education.field_of_study || '');
+    } else {
+      // Reset form for new education
+      setFormData({
+        institution: '',
+        degree: '',
+        field_of_study: '',
+        start_date: '',
+        end_date: '',
+        is_current: false,
+        grade: '',
+        description: ''
+      });
+      setInstitutionSearch('');
+      setDegreeSearch('');
+      setFieldSearch('');
+    }
+  }, [education]);
+
   const [loading, setLoading] = useState(false);
   const [institutionOpen, setInstitutionOpen] = useState(false);
   const [institutionSearch, setInstitutionSearch] = useState('');

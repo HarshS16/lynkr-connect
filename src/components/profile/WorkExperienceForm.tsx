@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +31,32 @@ export function WorkExperienceForm({ isOpen, onClose, workExperience, userId }: 
   });
 
   const [loading, setLoading] = useState(false);
+
+  // Update form data when workExperience prop changes
+  useEffect(() => {
+    if (workExperience) {
+      setFormData({
+        title: workExperience.title || '',
+        company: workExperience.company || '',
+        location: workExperience.location || '',
+        start_date: workExperience.start_date || '',
+        end_date: workExperience.end_date || '',
+        is_current: workExperience.is_current || false,
+        description: workExperience.description || ''
+      });
+    } else {
+      // Reset form for new work experience
+      setFormData({
+        title: '',
+        company: '',
+        location: '',
+        start_date: '',
+        end_date: '',
+        is_current: false,
+        description: ''
+      });
+    }
+  }, [workExperience]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
