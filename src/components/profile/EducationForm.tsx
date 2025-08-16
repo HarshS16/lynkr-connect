@@ -21,9 +21,10 @@ interface EducationFormProps {
   onClose: () => void;
   education?: Education;
   userId: string;
+  onSuccess?: () => void;
 }
 
-export function EducationForm({ isOpen, onClose, education, userId }: EducationFormProps) {
+export function EducationForm({ isOpen, onClose, education, userId, onSuccess }: EducationFormProps) {
   const { createEducation, updateEducation } = useEducation(userId);
   const isEditing = !!education;
 
@@ -187,6 +188,11 @@ export function EducationForm({ isOpen, onClose, education, userId }: EducationF
         await updateEducation(education.id, data);
       } else {
         await createEducation(data);
+      }
+
+      // Call onSuccess to refresh data
+      if (onSuccess) {
+        onSuccess();
       }
 
       onClose();

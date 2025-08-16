@@ -14,9 +14,10 @@ interface WorkExperienceFormProps {
   onClose: () => void;
   workExperience?: WorkExperience;
   userId: string;
+  onSuccess?: () => void;
 }
 
-export function WorkExperienceForm({ isOpen, onClose, workExperience, userId }: WorkExperienceFormProps) {
+export function WorkExperienceForm({ isOpen, onClose, workExperience, userId, onSuccess }: WorkExperienceFormProps) {
   const { createWorkExperience, updateWorkExperience } = useWorkExperience(userId);
   const isEditing = !!workExperience;
 
@@ -73,6 +74,11 @@ export function WorkExperienceForm({ isOpen, onClose, workExperience, userId }: 
         await updateWorkExperience(workExperience.id, data);
       } else {
         await createWorkExperience(data);
+      }
+
+      // Call onSuccess to refresh data
+      if (onSuccess) {
+        onSuccess();
       }
 
       onClose();

@@ -182,11 +182,11 @@ export default function ProfileNew() {
   const { profile, loading: profileLoading, updateProfile, uploadAvatar, deleteAvatar, isOwnProfile } = useProfile(userId);
 
   // Use hooks with fallback for new tables that might not exist yet
-  const { workExperience = [], loading: workLoading } = useWorkExperience(userId);
-  const { education = [], loading: eduLoading } = useEducation(userId);
-  const { achievements = [], loading: achieveLoading } = useAchievements(userId);
-  const { certifications = [], loading: certLoading } = useCertifications(userId);
-  const { skills = [], loading: skillsLoading } = useSkills(userId);
+  const { workExperience = [], loading: workLoading, refetch: refetchWorkExperience } = useWorkExperience(userId);
+  const { education = [], loading: eduLoading, refetch: refetchEducation } = useEducation(userId);
+  const { achievements = [], loading: achieveLoading, refetch: refetchAchievements } = useAchievements(userId);
+  const { certifications = [], loading: certLoading, refetch: refetchCertifications } = useCertifications(userId);
+  const { skills = [], loading: skillsLoading, refetch: refetchSkills } = useSkills(userId);
 
   // Mock connections data for now (until we implement connections hook)
   const connections: Connection[] = [];
@@ -1514,29 +1514,34 @@ export default function ProfileNew() {
             onClose={handleCloseWorkForm}
             workExperience={editingWorkExp}
             userId={userId}
+            onSuccess={refetchWorkExperience}
           />
           <EducationForm
             isOpen={showEducationForm}
             onClose={handleCloseEducationForm}
             education={editingEducation}
             userId={userId}
+            onSuccess={refetchEducation}
           />
           <SkillsForm
             isOpen={showSkillsForm}
             onClose={() => setShowSkillsForm(false)}
             userId={userId}
+            onSuccess={refetchSkills}
           />
           <AchievementForm
             isOpen={showAchievementForm}
             onClose={handleCloseAchievementForm}
             achievement={editingAchievement}
             userId={userId}
+            onSuccess={refetchAchievements}
           />
           <CertificationForm
             isOpen={showCertificationForm}
             onClose={handleCloseCertificationForm}
             certification={editingCertification}
             userId={userId}
+            onSuccess={refetchCertifications}
           />
         </>
       )}
