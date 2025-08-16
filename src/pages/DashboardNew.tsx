@@ -796,6 +796,7 @@ export default function Dashboard() {
 
                 <motion.div
                   whileHover={{ scale: 1.02 }}
+                  onClick={() => navigate('/analytics')}
                   className="p-6 bg-white/30 backdrop-blur-sm rounded-2xl border border-white/30 shadow-lg hover:shadow-xl transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
