@@ -399,7 +399,7 @@ export default function Analytics() {
                         Create New Post
                       </Button>
                       <Button
-                        onClick={() => navigate('/profile')}
+                        onClick={() => navigate(`/profile/${user?.id}`)}
                         className="bg-purple-600/20 hover:bg-purple-600/30 text-white border border-purple-400/30"
                       >
                         <Users className="h-4 w-4 mr-2" />
