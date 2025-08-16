@@ -9,6 +9,7 @@ import {
   useCertifications,
   useSkills
 } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -188,8 +190,77 @@ export default function ProfileNew() {
   const { certifications = [], loading: certLoading, refetch: refetchCertifications } = useCertifications(userId);
   const { skills = [], loading: skillsLoading, refetch: refetchSkills } = useSkills(userId);
 
-  // Mock connections data for now (until we implement connections hook)
-  const connections: Connection[] = [];
+  // Connections state
+  const [connections, setConnections] = useState<any[]>([]);
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [showConnectionsDialog, setShowConnectionsDialog] = useState(false);
+
+  // Fetch connections
+  const fetchConnections = async () => {
+    if (!userId) return;
+
+    try {
+      setConnectionsLoading(true);
+
+      // Get basic connections data
+      const { data: connectionsData, error: connectionsError } = await supabase
+        .from("connections")
+        .select("id, requester_id, addressee_id, status, created_at")
+        .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+        .eq('status', 'accepted');
+
+      if (connectionsError) {
+        console.error("Error fetching connections:", connectionsError);
+        setConnections([]);
+        return;
+      }
+
+      if (!connectionsData || connectionsData.length === 0) {
+        setConnections([]);
+        return;
+      }
+
+      // Fetch profile data for each connection
+      const connectionsWithProfiles = await Promise.all(
+        connectionsData.map(async (conn) => {
+          const otherUserId = conn.requester_id === userId ? conn.addressee_id : conn.requester_id;
+
+          try {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('user_id, full_name, avatar_url')
+              .eq('user_id', otherUserId)
+              .single();
+
+            return {
+              ...conn,
+              otherUser: profileData || {
+                user_id: otherUserId,
+                full_name: 'Unknown User',
+                avatar_url: null
+              }
+            };
+          } catch (error) {
+            return {
+              ...conn,
+              otherUser: {
+                user_id: otherUserId,
+                full_name: 'Unknown User',
+                avatar_url: null
+              }
+            };
+          }
+        })
+      );
+
+      setConnections(connectionsWithProfiles);
+    } catch (error) {
+      console.error("Error in fetchConnections:", error);
+      setConnections([]);
+    } finally {
+      setConnectionsLoading(false);
+    }
+  };
 
   // UI state
   const [editing, setEditing] = useState(false);
@@ -232,6 +303,13 @@ export default function ProfileNew() {
       navigate(`/profile/${user.id}`, { replace: true });
     }
   }, [userId, user, navigate]);
+
+  // Fetch connections when userId changes
+  useEffect(() => {
+    if (userId) {
+      fetchConnections();
+    }
+  }, [userId]);
 
   // Update edit form when profile changes
   useEffect(() => {
@@ -698,10 +776,15 @@ export default function ProfileNew() {
 
                       {/* Stats */}
                       <div className="flex gap-6 text-sm text-blue-700/70">
-                        <span className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowConnectionsDialog(true)}
+                          className="flex items-center gap-1 text-blue-700/70 hover:text-blue-600 hover:bg-blue-50 p-0 h-auto font-normal"
+                        >
                           <Users className="h-4 w-4" />
-                          {connections.filter(c => c.status === 'accepted').length} connections
-                        </span>
+                          {connections.length} {connections.length === 1 ? 'connection' : 'connections'}
+                        </Button>
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           Joined {format(new Date(profile.created_at), 'MMMM yyyy')}
@@ -1545,6 +1628,53 @@ export default function ProfileNew() {
           />
         </>
       )}
+
+      {/* Connections Dialog */}
+      <Dialog open={showConnectionsDialog} onOpenChange={setShowConnectionsDialog}>
+        <DialogContent className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 shadow-2xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white font-semibold text-lg">Connections</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-96 overflow-y-auto">
+            {connectionsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-blue-400">Loading connections...</div>
+              </div>
+            ) : connections.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">No connections found.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {connections.map((conn) => (
+                  <motion.div
+                    key={conn.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800/50 transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-700/30"
+                    onClick={() => {
+                      navigate(`/profile/${conn.otherUser?.user_id}`);
+                      setShowConnectionsDialog(false);
+                    }}
+                  >
+                    <Avatar className="h-10 w-10 border-2 border-gray-600/50">
+                      <AvatarImage src={conn.otherUser?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-blue-600 text-white font-medium">
+                        {conn.otherUser?.full_name?.charAt(0) || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-white hover:text-blue-400 transition-colors">
+                        {conn.otherUser?.full_name || "Unknown User"}
+                      </h4>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
