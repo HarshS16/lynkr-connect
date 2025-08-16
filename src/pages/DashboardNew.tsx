@@ -432,6 +432,25 @@ export default function Dashboard() {
     }));
   };
 
+  const handleShare = async (postId: string) => {
+    const shareUrl = `${window.location.origin}/post/${postId}`;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Link copied!",
+        description: "Post link has been copied to clipboard",
+      });
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast({
+        title: "Error",
+        description: "Failed to copy link",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleSidebarClick = (index: number, label: string) => {
     if (label === 'Network') {
       navigate('/network');
@@ -893,6 +912,7 @@ export default function Dashboard() {
                                   </motion.button>
                                   <motion.button
                                     whileHover={{ scale: 1.05 }}
+                                    onClick={() => handleShare(post.id)}
                                     className="flex items-center gap-2 hover:text-green-600 transition-colors"
                                   >
                                     <Share2 className="h-4 w-4" />

@@ -12,6 +12,7 @@ import Network from "./pages/Network";
 import Jobs from "./pages/Jobs";
 import Messages from "./pages/Messages";
 import Posts from "./pages/Posts";
+import PostView from "./pages/PostView";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/reset-password";
@@ -58,6 +59,7 @@ const App = () => (
                 <Posts />
               </ProtectedRoute>
             } />
+            <Route path="/post/:postId" element={<PostView />} />
             <Route path="/analytics" element={
               <ProtectedRoute>
                 <Analytics />
