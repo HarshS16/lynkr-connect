@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,9 +13,10 @@ interface AchievementFormProps {
   onClose: () => void;
   achievement?: Achievement;
   userId: string;
+  onSuccess?: () => void;
 }
 
-export function AchievementForm({ isOpen, onClose, achievement, userId }: AchievementFormProps) {
+export function AchievementForm({ isOpen, onClose, achievement, userId, onSuccess }: AchievementFormProps) {
   const { createAchievement, updateAchievement } = useAchievements(userId);
   const isEditing = !!achievement;
 
@@ -28,6 +29,28 @@ export function AchievementForm({ isOpen, onClose, achievement, userId }: Achiev
   });
 
   const [loading, setLoading] = useState(false);
+
+  // Update form data when achievement prop changes
+  useEffect(() => {
+    if (achievement) {
+      setFormData({
+        title: achievement.title || '',
+        description: achievement.description || '',
+        date_achieved: achievement.date_achieved || '',
+        organization: achievement.organization || '',
+        url: achievement.url || ''
+      });
+    } else {
+      // Reset form for new achievement
+      setFormData({
+        title: '',
+        description: '',
+        date_achieved: '',
+        organization: '',
+        url: ''
+      });
+    }
+  }, [achievement]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +67,11 @@ export function AchievementForm({ isOpen, onClose, achievement, userId }: Achiev
         await updateAchievement(achievement.id, data);
       } else {
         await createAchievement(data);
+      }
+
+      // Call onSuccess to refresh data
+      if (onSuccess) {
+        onSuccess();
       }
 
       onClose();

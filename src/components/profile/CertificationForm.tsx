@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,9 +13,10 @@ interface CertificationFormProps {
   onClose: () => void;
   certification?: Certification;
   userId: string;
+  onSuccess?: () => void;
 }
 
-export function CertificationForm({ isOpen, onClose, certification, userId }: CertificationFormProps) {
+export function CertificationForm({ isOpen, onClose, certification, userId, onSuccess }: CertificationFormProps) {
   const { createCertification, updateCertification } = useCertifications(userId);
   const isEditing = !!certification;
 
@@ -30,6 +31,32 @@ export function CertificationForm({ isOpen, onClose, certification, userId }: Ce
   });
 
   const [loading, setLoading] = useState(false);
+
+  // Update form data when certification prop changes
+  useEffect(() => {
+    if (certification) {
+      setFormData({
+        name: certification.name || '',
+        issuing_organization: certification.issuing_organization || '',
+        issue_date: certification.issue_date || '',
+        expiration_date: certification.expiration_date || '',
+        credential_id: certification.credential_id || '',
+        credential_url: certification.credential_url || '',
+        description: certification.description || ''
+      });
+    } else {
+      // Reset form for new certification
+      setFormData({
+        name: '',
+        issuing_organization: '',
+        issue_date: '',
+        expiration_date: '',
+        credential_id: '',
+        credential_url: '',
+        description: ''
+      });
+    }
+  }, [certification]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +73,11 @@ export function CertificationForm({ isOpen, onClose, certification, userId }: Ce
         await updateCertification(certification.id, data);
       } else {
         await createCertification(data);
+      }
+
+      // Call onSuccess to refresh data
+      if (onSuccess) {
+        onSuccess();
       }
 
       onClose();

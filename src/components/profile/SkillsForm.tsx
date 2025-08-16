@@ -12,6 +12,7 @@ interface SkillsFormProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
+  onSuccess?: () => void;
 }
 
 interface SkillFormData {
@@ -20,7 +21,7 @@ interface SkillFormData {
   years_of_experience: number | '';
 }
 
-export function SkillsForm({ isOpen, onClose, userId }: SkillsFormProps) {
+export function SkillsForm({ isOpen, onClose, userId, onSuccess }: SkillsFormProps) {
   const { createSkills } = useSkills(userId);
 
   const [skills, setSkills] = useState<SkillFormData[]>([
@@ -44,6 +45,12 @@ export function SkillsForm({ isOpen, onClose, userId }: SkillsFormProps) {
 
       if (validSkills.length > 0) {
         await createSkills(validSkills);
+
+        // Call onSuccess to refresh data
+        if (onSuccess) {
+          onSuccess();
+        }
+
         onClose();
       }
     } catch (error) {
