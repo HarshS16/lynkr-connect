@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { likePost, unlikePost, getLikesCount, hasLiked, getLikers } from '@/integrations/supabase/likes';
@@ -62,6 +62,8 @@ interface Post {
   id: string;
   content: string;
   created_at: string;
+  image_url?: string | null;
+
   profiles: {
     full_name: string;
     user_id: string;
@@ -84,6 +86,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState('');
+  const [newPostImageFile, setNewPostImageFile] = useState<File | null>(null);
+  const [newPostImagePreview, setNewPostImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -157,7 +162,7 @@ export default function Dashboard() {
 
   const fetchPosts = async () => {
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from('posts')
         .select(`
           id,
@@ -166,9 +171,11 @@ export default function Dashboard() {
           profiles:profiles!posts_author_id_fkey (
             full_name,
             user_id
-          )
+          ),
+          image_url
         `)
         .order('created_at', { ascending: false });
+      const { data, error } = await (query as any);
 
       if (error) throw error;
 
@@ -269,11 +276,27 @@ export default function Dashboard() {
         throw new Error("User session not found. Please sign in again.");
       }
 
+      let imageUrl: string | null = null;
+      if (newPostImageFile) {
+        const fileExt = newPostImageFile.name.split('.').pop();
+        const fileName = `${sessionUser.id}-${Date.now()}.${fileExt}`;
+        const filePath = `posts/${sessionUser.id}/${fileName}`;
+        const { error: uploadError } = await supabase.storage
+          .from('post-images')
+          .upload(filePath, newPostImageFile);
+        if (uploadError) throw uploadError;
+        const { data: publicData } = await supabase.storage
+          .from('post-images')
+          .getPublicUrl(filePath);
+        imageUrl = publicData.publicUrl;
+      }
+
       const { error } = await supabase
         .from('posts')
         .insert({
           content: newPost.trim(),
           author_id: sessionUser.id,
+          image_url: imageUrl,
         });
 
       if (error) throw error;
@@ -889,6 +912,12 @@ export default function Dashboard() {
                                 <p className="text-blue-900 leading-relaxed mb-4 whitespace-pre-wrap">
                                   {post.content}
                                 </p>
+                                {post.image_url && (
+                                  <div className="mb-4">
+                                    <img src={post.image_url} alt="Post" className="max-h-[420px] rounded-lg border border-white/30" />
+                                  </div>
+                                )}
+
                                 <div className="flex items-center gap-6 text-blue-700/70">
                                   <div className="flex items-center gap-2">
                                     <motion.button
@@ -1076,9 +1105,41 @@ export default function Dashboard() {
                   onChange={(e) => setNewPost(e.target.value)}
                   className="min-h-[120px] border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900 placeholder:text-blue-700/50"
                 />
+                {newPostImagePreview && (
+                  <div className="relative mt-2">
+                    <img src={newPostImagePreview} alt="Preview" className="max-h-72 rounded-lg border border-white/30" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setNewPostImageFile(null); setNewPostImagePreview(null); }}
+                      className="absolute top-2 right-2 bg-white/70"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )}
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setNewPostImageFile(file);
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => setNewPostImagePreview(reader.result as string);
+                      reader.readAsDataURL(file);
+                    } else {
+                      setNewPostImagePreview(null);
+                    }
+                  }}
+                />
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <Button type="button" variant="ghost" className="text-blue-700 hover:text-blue-900">
+                    <Button type="button" variant="ghost" className="text-blue-700 hover:text-blue-900" onClick={() => fileInputRef.current?.click()}>
                       <Camera className="h-4 w-4 mr-2" />
                       Photo
                     </Button>
