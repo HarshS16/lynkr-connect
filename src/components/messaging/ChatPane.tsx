@@ -101,7 +101,7 @@ export function ChatPane({ conversation, heightClass = 'h-[70vh]' }: ChatPanePro
           <div
             className={cn(
               'rounded-2xl px-4 py-2 relative group',
-              mine ? 'bg-blue-600 text-white' : 'bg-white/60 backdrop-blur-sm text-blue-900'
+              mine ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-900 border border-blue-100'
             )}
           >
             {message.message_type === 'text' && (
@@ -137,9 +137,9 @@ export function ChatPane({ conversation, heightClass = 'h-[70vh]' }: ChatPanePro
   };
 
   return (
-    <div className={cn('flex flex-col rounded-2xl bg-white/40 backdrop-blur-md border border-white/30', heightClass)}>
+    <div className={cn('flex flex-col rounded-2xl bg-white/90 backdrop-blur-xl border border-blue-100 shadow-lg', heightClass)}>
       {/* Header */}
-      <div className="p-4 border-b border-white/30 flex items-center gap-3">
+      <div className="p-4 border-b border-blue-100 bg-gradient-to-r from-white to-blue-50/40 flex items-center gap-3">
         <Avatar className="h-10 w-10">
           <AvatarImage src={conversation.other_participant?.avatar_url} />
           <AvatarFallback className="bg-blue-500 text-white">
@@ -177,7 +177,7 @@ export function ChatPane({ conversation, heightClass = 'h-[70vh]' }: ChatPanePro
       </div>
 
       {/* Composer */}
-      <div className="p-4 border-t border-white/30">
+      <div className="p-4 border-t border-blue-100 bg-white/80">
         <form onSubmit={handleSendMessage} className="flex items-end gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
@@ -206,7 +206,7 @@ export function ChatPane({ conversation, heightClass = 'h-[70vh]' }: ChatPanePro
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Write your message..."
-              className="border-white/30 bg-white/30 backdrop-blur-sm focus:border-blue-500 focus:bg-white/40 text-blue-900"
+              className="border-blue-200 bg-white focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 text-blue-900 placeholder:text-blue-900/50"
               disabled={sending || uploadingImage}
             />
           </div>

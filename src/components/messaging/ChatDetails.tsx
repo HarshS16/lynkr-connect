@@ -11,7 +11,7 @@ interface ChatDetailsProps {
 export function ChatDetails({ conversation }: ChatDetailsProps) {
   if (!conversation) {
     return (
-      <Card className="p-6 bg-white/40 backdrop-blur-md border-white/30 rounded-2xl text-blue-700/70">
+      <Card className="p-6 bg-white/90 backdrop-blur-xl border-blue-100 rounded-2xl text-blue-700 shadow-lg">
         Select a chat to see details
       </Card>
     );
@@ -19,7 +19,7 @@ export function ChatDetails({ conversation }: ChatDetailsProps) {
 
   return (
     <div className="space-y-4">
-      <Card className="p-6 bg-white/40 backdrop-blur-md border-white/30 rounded-2xl">
+      <Card className="p-6 bg-white/90 backdrop-blur-xl border-blue-100 rounded-2xl shadow-lg">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
             <AvatarImage src={conversation.other_participant?.avatar_url} />
@@ -36,25 +36,25 @@ export function ChatDetails({ conversation }: ChatDetailsProps) {
         </div>
       </Card>
 
-      <Card className="p-6 bg-white/40 backdrop-blur-md border-white/30 rounded-2xl">
+      <Card className="p-6 bg-white/90 backdrop-blur-xl border-blue-100 rounded-2xl shadow-lg">
         <p className="font-medium text-blue-900 mb-3">Shared files</p>
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-center gap-2 text-blue-800 bg-white/60 rounded-xl p-3">
+          <div className="flex items-center gap-2 text-blue-800 bg-blue-50 rounded-xl p-3 border border-blue-100">
             <ImageIcon className="h-4 w-4" />
             <span className="text-sm">Photos</span>
             <Badge variant="secondary" className="ml-auto">—</Badge>
           </div>
-          <div className="flex items-center gap-2 text-blue-800 bg-white/60 rounded-xl p-3">
+          <div className="flex items-center gap-2 text-blue-800 bg-blue-50 rounded-xl p-3 border border-blue-100">
             <FileText className="h-4 w-4" />
             <span className="text-sm">Documents</span>
             <Badge variant="secondary" className="ml-auto">—</Badge>
           </div>
-          <div className="flex items-center gap-2 text-blue-800 bg-white/60 rounded-xl p-3">
+          <div className="flex items-center gap-2 text-blue-800 bg-blue-50 rounded-xl p-3 border border-blue-100">
             <LinkIcon className="h-4 w-4" />
             <span className="text-sm">Links</span>
             <Badge variant="secondary" className="ml-auto">—</Badge>
           </div>
-          <div className="flex items-center gap-2 text-blue-800 bg-white/60 rounded-xl p-3">
+          <div className="flex items-center gap-2 text-blue-800 bg-blue-50 rounded-xl p-3 border border-blue-100">
             <Users className="h-4 w-4" />
             <span className="text-sm">Participants</span>
             <Badge variant="secondary" className="ml-auto">2</Badge>

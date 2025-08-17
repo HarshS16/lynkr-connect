@@ -59,7 +59,7 @@ export default function Messages() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-white via-blue-50 to-blue-100 relative overflow-hidden">
       <ThreeBackground />
       
       <div className="relative z-10 min-h-screen">
@@ -174,7 +174,7 @@ export default function Messages() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left: Conversations list */}
               <div className="lg:col-span-3">
-                <Card className="bg-white/30 backdrop-blur-sm border-white/30 rounded-2xl">
+                <Card className="bg-white/90 backdrop-blur-xl border-blue-100 rounded-2xl shadow-lg">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <h2 className="text-blue-900 font-semibold">Chats</h2>
@@ -205,7 +205,7 @@ export default function Messages() {
                               exit={{ opacity: 0, x: -20 }}
                               transition={{ delay: index * 0.05 }}
                               onClick={() => handleConversationClick(conversation)}
-                              className={"p-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/30 hover:bg-white/70 transition-all cursor-pointer group " + (selectedConversation?.id===conversation.id?"ring-2 ring-blue-300":"")}
+                              className={"p-3 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100/70 transition-all cursor-pointer group " + (selectedConversation?.id===conversation.id?"ring-2 ring-blue-300":"")}
                             >
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
@@ -244,7 +244,7 @@ export default function Messages() {
                 {selectedConversation ? (
                   <ChatPane conversation={selectedConversation} heightClass="h-[70vh]" />
                 ) : (
-                  <Card className="p-6 bg-white/30 backdrop-blur-sm border-white/30 rounded-2xl h-[70vh] flex items-center justify-center text-blue-700/70">
+                  <Card className="p-6 bg-white/90 backdrop-blur-xl border-blue-100 rounded-2xl h-[70vh] flex items-center justify-center text-blue-700/70 shadow-lg">
                     Select a chat to start messaging
                   </Card>
                 )}
