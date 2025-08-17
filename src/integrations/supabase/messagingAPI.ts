@@ -40,15 +40,14 @@ export const messagingAPI = {
 
     const conversationIdList = conversationIds.map(p => p.conversation_id);
 
-    // Get conversations with participants
+    // Get conversations with participants (no nested profile join to avoid FK mismatch)
     const { data, error } = await supabase
       .from('conversations')
       .select(`
         *,
         participants:conversation_participants(
           user_id,
-          last_read_at,
-          user:profiles(id, full_name, avatar_url, current_position)
+          last_read_at
         )
       `)
       .in('id', conversationIdList)
@@ -56,9 +55,29 @@ export const messagingAPI = {
 
     if (error) throw error;
 
-    // Get last message for each conversation
+    // Build a map of the "other" user IDs across conversations
+    const otherUserIdsSet = new Set<string>();
+    for (const conv of data as any[]) {
+      const participants: { user_id: string }[] = conv.participants || [];
+      const other = participants.find(p => p.user_id !== currentUser.user!.id);
+      if (other) otherUserIdsSet.add(other.user_id);
+    }
+    const otherUserIds = Array.from(otherUserIdsSet);
+
+    // Fetch profiles for all other users in one query
+    let profileMap: Record<string, { user_id: string; full_name?: string | null; avatar_url?: string | null; current_position?: string | null }> = {};
+    if (otherUserIds.length > 0) {
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, avatar_url, current_position')
+        .in('user_id', otherUserIds);
+      if (profilesError) throw profilesError;
+      profileMap = Object.fromEntries((profilesData || []).map((p: any) => [p.user_id, p]));
+    }
+
+    // Get last message for each conversation and attach other participant profile
     const conversationsWithMessages = await Promise.all(
-      data.map(async (conversation) => {
+      data.map(async (conversation: any) => {
         const { data: lastMessage } = await supabase
           .from('messages')
           .select(`
@@ -74,15 +93,21 @@ export const messagingAPI = {
           .limit(1)
           .single();
 
-        const otherParticipant = conversation.participants?.find(
-          p => p.user_id !== currentUser.user!.id
-        );
+        const other = (conversation.participants || []).find((p: any) => p.user_id !== currentUser.user!.id);
+        const prof = other ? profileMap[other.user_id] : null;
 
         return {
           ...conversation,
-          other_participant: otherParticipant?.user,
-          last_message: lastMessage
-        };
+          other_participant: prof
+            ? {
+                id: prof.user_id,
+                full_name: prof.full_name,
+                avatar_url: prof.avatar_url,
+                current_position: prof.current_position,
+              }
+            : null,
+          last_message: lastMessage,
+        } as ConversationWithDetails;
       })
     );
 
