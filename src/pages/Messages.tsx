@@ -8,7 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { ThreeBackground } from '@/components/ThreeBackground';
-import { ChatDialog } from '@/components/messaging/ChatDialog';
+import ChatPane from '@/components/messaging/ChatPane';
+import ChatDetails from '@/components/messaging/ChatDetails';
 import { ConversationWithDetails } from '@/integrations/supabase/messaging';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -27,7 +28,7 @@ export default function Messages() {
   const { conversations, loading } = useConversations();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<ConversationWithDetails | null>(null);
-  const [showChatDialog, setShowChatDialog] = useState(false);
+
 
   const handleSignOut = async () => {
     try {
@@ -46,7 +47,6 @@ export default function Messages() {
 
   const handleConversationClick = (conversation: ConversationWithDetails) => {
     setSelectedConversation(conversation);
-    setShowChatDialog(true);
   };
 
   const getMessagePreview = (conversation: ConversationWithDetails) => {
@@ -169,109 +169,96 @@ export default function Messages() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-4xl mx-auto"
+            className="mx-auto max-w-7xl"
           >
-            {/* Page Title */}
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-blue-900 mb-2">Messages</h1>
-              <p className="text-blue-700/70">Connect and chat with your network</p>
-            </div>
-
-            {/* Conversations List */}
-            <Card className="bg-white/30 backdrop-blur-sm border-white/30">
-              <CardContent className="p-6">
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="text-blue-700/70 mt-2">Loading conversations...</p>
-                  </div>
-                ) : filteredConversations.length === 0 ? (
-                  <div className="text-center py-12">
-                    <MessageCircle className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-blue-900 mb-2">
-                      {conversations.length === 0 ? 'No conversations yet' : 'No matching conversations'}
-                    </h3>
-                    <p className="text-blue-700/70 mb-6">
-                      {conversations.length === 0 
-                        ? 'Start connecting with people to begin conversations'
-                        : 'Try adjusting your search terms'
-                      }
-                    </p>
-                    {conversations.length === 0 && (
-                      <Button
-                        onClick={() => navigate('/network')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        <Users className="h-4 w-4 mr-2" />
-                        Explore Network
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <AnimatePresence>
-                      {filteredConversations.map((conversation, index) => (
-                        <motion.div
-                          key={conversation.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ delay: index * 0.1 }}
-                          onClick={() => handleConversationClick(conversation)}
-                          className="p-4 rounded-xl bg-white/40 backdrop-blur-sm border border-white/30 hover:bg-white/50 transition-all cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-4">
-                            <Avatar className="h-12 w-12">
-                              <AvatarImage src={conversation.other_participant?.avatar_url} />
-                              <AvatarFallback className="bg-blue-500 text-white">
-                                {conversation.other_participant?.full_name?.charAt(0) || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-blue-900 truncate">
-                                  {conversation.other_participant?.full_name || 'Unknown User'}
-                                </h3>
-                                {conversation.last_message && (
-                                  <span className="text-xs text-blue-700/60">
-                                    {formatDistanceToNow(new Date(conversation.last_message.created_at), { addSuffix: true })}
-                                  </span>
-                                )}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left: Conversations list */}
+              <div className="lg:col-span-3">
+                <Card className="bg-white/30 backdrop-blur-sm border-white/30 rounded-2xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-blue-900 font-semibold">Chats</h2>
+                      <span className="text-xs text-blue-700/60">{filteredConversations.length}</span>
+                    </div>
+                    {loading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="text-blue-700/70 mt-2">Loading conversations...</p>
+                      </div>
+                    ) : filteredConversations.length === 0 ? (
+                      <div className="text-center py-12">
+                        <MessageCircle className="h-16 w-16 text-blue-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-blue-900 mb-2">No conversations</h3>
+                        <p className="text-blue-700/70 mb-4">Start connecting with people to begin!</p>
+                        <Button onClick={() => navigate('/network')} className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Users className="h-4 w-4 mr-2" />Explore Network
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+                        <AnimatePresence>
+                          {filteredConversations.map((conversation, index) => (
+                            <motion.div
+                              key={conversation.id}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -20 }}
+                              transition={{ delay: index * 0.05 }}
+                              onClick={() => handleConversationClick(conversation)}
+                              className={"p-3 rounded-xl bg-white/60 backdrop-blur-sm border border-white/30 hover:bg-white/70 transition-all cursor-pointer group " + (selectedConversation?.id===conversation.id?"ring-2 ring-blue-300":"")}
+                            >
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarImage src={conversation.other_participant?.avatar_url} />
+                                  <AvatarFallback className="bg-blue-500 text-white">
+                                    {conversation.other_participant?.full_name?.charAt(0) || 'U'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <h3 className="font-medium text-blue-900 truncate">
+                                      {conversation.other_participant?.full_name || 'Unknown User'}
+                                    </h3>
+                                    {conversation.last_message && (
+                                      <span className="text-[10px] text-blue-700/60 whitespace-nowrap">
+                                        {formatDistanceToNow(new Date(conversation.last_message.created_at), { addSuffix: true })}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-blue-700/80 truncate mt-0.5">
+                                    {getMessagePreview(conversation)}
+                                  </p>
+                                </div>
                               </div>
-                              
-                              {conversation.other_participant?.current_position && (
-                                <p className="text-sm text-blue-700/70 truncate">
-                                  {conversation.other_participant.current_position}
-                                </p>
-                              )}
-                              
-                              <p className="text-sm text-blue-700/80 truncate mt-1">
-                                {getMessagePreview(conversation)}
-                              </p>
-                            </div>
-                            
-                            <MessageCircle className="h-5 w-5 text-blue-600 group-hover:text-blue-700 transition-colors" />
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Middle: Chat */}
+              <div className="lg:col-span-6">
+                {selectedConversation ? (
+                  <ChatPane conversation={selectedConversation} heightClass="h-[70vh]" />
+                ) : (
+                  <Card className="p-6 bg-white/30 backdrop-blur-sm border-white/30 rounded-2xl h-[70vh] flex items-center justify-center text-blue-700/70">
+                    Select a chat to start messaging
+                  </Card>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+
+              {/* Right: Details */}
+              <div className="lg:col-span-3">
+                <ChatDetails conversation={selectedConversation} />
+              </div>
+            </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Chat Dialog */}
-      {selectedConversation && (
-        <ChatDialog
-          open={showChatDialog}
-          onOpenChange={setShowChatDialog}
-          conversation={selectedConversation}
-        />
-      )}
     </div>
   );
 }
