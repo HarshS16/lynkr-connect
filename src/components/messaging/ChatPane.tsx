@@ -148,7 +148,7 @@ export function ChatPane({ conversation, heightClass = 'h-[70vh]' }: ChatPanePro
         </Avatar>
         <div className="min-w-0">
           <p className="font-semibold text-blue-900 truncate">
-            {conversation.other_participant?.full_name || 'Unknown User'}
+            {conversation.other_participant?.full_name ?? conversation.other_participant?.id ?? 'User'}
           </p>
           {conversation.other_participant?.current_position && (
             <p className="text-xs text-blue-700/70 truncate">

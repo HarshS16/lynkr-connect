@@ -55,24 +55,34 @@ export const messagingAPI = {
 
     if (error) throw error;
 
-    // Build a map of the "other" user IDs across conversations
-    const otherUserIdsSet = new Set<string>();
+    // Build a set of the "other" participant IDs across conversations
+    const otherIds = new Set<string>();
     for (const conv of data as any[]) {
       const participants: { user_id: string }[] = conv.participants || [];
       const other = participants.find(p => p.user_id !== currentUser.user!.id);
-      if (other) otherUserIdsSet.add(other.user_id);
+      if (other && other.user_id) otherIds.add(other.user_id);
     }
-    const otherUserIds = Array.from(otherUserIdsSet);
+    const idList = Array.from(otherIds);
 
-    // Fetch profiles for all other users in one query
-    let profileMap: Record<string, { user_id: string; full_name?: string | null; avatar_url?: string | null; current_position?: string | null }> = {};
-    if (otherUserIds.length > 0) {
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, avatar_url, current_position')
-        .in('user_id', otherUserIds);
-      if (profilesError) throw profilesError;
-      profileMap = Object.fromEntries((profilesData || []).map((p: any) => [p.user_id, p]));
+    // Fetch profiles for all other users (robust: try matching by user_id and by id)
+    type Prof = { id: string; user_id: string; full_name?: string | null; avatar_url?: string | null; current_position?: string | null };
+    const profileMapByUserId: Record<string, Prof> = {};
+    const profileMapById: Record<string, Prof> = {};
+    if (idList.length > 0) {
+      const [{ data: byUserId, error: e1 }, { data: byId, error: e2 }] = await Promise.all([
+        supabase.from('profiles').select('id, user_id, full_name, avatar_url, current_position').in('user_id', idList),
+        supabase.from('profiles').select('id, user_id, full_name, avatar_url, current_position').in('id', idList),
+      ]);
+      if (e1) throw e1;
+      if (e2) throw e2;
+      (byUserId || []).forEach((p: any) => {
+        profileMapByUserId[p.user_id] = p;
+        profileMapById[p.id] = p;
+      });
+      (byId || []).forEach((p: any) => {
+        profileMapByUserId[p.user_id] = p;
+        profileMapById[p.id] = p;
+      });
     }
 
     // Get last message for each conversation and attach other participant profile
@@ -94,18 +104,21 @@ export const messagingAPI = {
           .single();
 
         const other = (conversation.participants || []).find((p: any) => p.user_id !== currentUser.user!.id);
-        const prof = other ? profileMap[other.user_id] : null;
+        // Try map by user_id first, then by id
+        const prof = other ? (profileMapByUserId[other.user_id] || profileMapById[other.user_id]) : null;
 
         return {
           ...conversation,
           other_participant: prof
             ? {
-                id: prof.user_id,
+                id: prof.user_id || prof.id,
                 full_name: prof.full_name,
                 avatar_url: prof.avatar_url,
                 current_position: prof.current_position,
               }
-            : null,
+            : (other
+                ? { id: other.user_id, full_name: undefined, avatar_url: undefined, current_position: undefined }
+                : null),
           last_message: lastMessage,
         } as ConversationWithDetails;
       })

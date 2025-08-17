@@ -217,7 +217,7 @@ export default function Messages() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
                                     <h3 className="font-medium text-blue-900 truncate">
-                                      {conversation.other_participant?.full_name || 'Unknown User'}
+                                      {conversation.other_participant?.full_name ?? conversation.other_participant?.id ?? 'User'}
                                     </h3>
                                     {conversation.last_message && (
                                       <span className="text-[10px] text-blue-700/60 whitespace-nowrap">
