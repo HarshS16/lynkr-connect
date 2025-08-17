@@ -120,7 +120,7 @@ export const messagingAPI = {
         const other = (conversation.participants || []).find((p: any) => p.user_id !== currentUser.user!.id);
         // Prefer profile from a message sent by the other participant (bypasses participant RLS limits)
         const profFromMsg = otherMsg?.sender as any | null;
-        const profFromMap = other ? (profileMapByUserId[other.user_id] || profileMapById[other.user_id]) : null;
+        const profFromMap = other ? profileMapByUserId[other.user_id] : null;
         let prof = profFromMsg || profFromMap || null;
 
         // As a final fallback, fetch profile directly by user_id
