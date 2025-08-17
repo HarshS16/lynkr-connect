@@ -88,38 +88,64 @@ export const messagingAPI = {
     // Get last message for each conversation and attach other participant profile
     const conversationsWithMessages = await Promise.all(
       data.map(async (conversation: any) => {
-        const { data: lastMessage } = await supabase
-          .from('messages')
-          .select(`
-            id,
-            content,
-            message_type,
-            created_at,
-            sender:profiles(id, full_name)
-          `)
-          .eq('conversation_id', conversation.id)
-          .eq('is_deleted', false)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+        const [{ data: lastMessage }, { data: otherMsg }] = await Promise.all([
+          supabase
+            .from('messages')
+            .select(`
+              id,
+              content,
+              message_type,
+              created_at,
+              sender:profiles(id, full_name, avatar_url)
+            `)
+            .eq('conversation_id', conversation.id)
+            .eq('is_deleted', false)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single(),
+          supabase
+            .from('messages')
+            .select(`
+              id,
+              sender:profiles(id, full_name, avatar_url)
+            `)
+            .eq('conversation_id', conversation.id)
+            .eq('is_deleted', false)
+            .neq('sender_id', currentUser.user!.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
 
         const other = (conversation.participants || []).find((p: any) => p.user_id !== currentUser.user!.id);
-        // Try map by user_id first, then by id
-        const prof = other ? (profileMapByUserId[other.user_id] || profileMapById[other.user_id]) : null;
+        // Prefer profile from a message sent by the other participant (bypasses participant RLS limits)
+        const profFromMsg = otherMsg?.sender as any | null;
+        const profFromMap = other ? (profileMapByUserId[other.user_id] || profileMapById[other.user_id]) : null;
+        let prof = profFromMsg || profFromMap || null;
+
+        // As a final fallback, fetch profile directly by user_id
+        if (!prof && other?.user_id) {
+          const { data: directProf } = await supabase
+            .from('profiles')
+            .select('id, user_id, full_name, avatar_url, current_position')
+            .eq('user_id', other.user_id)
+            .maybeSingle();
+          if (directProf) prof = directProf as any;
+        }
 
         return {
           ...conversation,
           other_participant: prof
             ? {
-                id: prof.user_id || prof.id,
-                full_name: prof.full_name,
-                avatar_url: prof.avatar_url,
-                current_position: prof.current_position,
+                id: (prof as any).user_id || (prof as any).id,
+                full_name: (prof as any).full_name,
+                avatar_url: (prof as any).avatar_url,
+                current_position: (prof as any).current_position,
               }
             : (other
                 ? { id: other.user_id, full_name: undefined, avatar_url: undefined, current_position: undefined }
                 : null),
-          last_message: lastMessage,
+          last_message: lastMessage || undefined,
         } as ConversationWithDetails;
       })
     );
