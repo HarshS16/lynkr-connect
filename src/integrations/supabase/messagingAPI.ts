@@ -80,7 +80,6 @@ export const messagingAPI = {
         profileMapById[p.id] = p;
       });
       (byId || []).forEach((p: any) => {
-        profileMapByUserId[p.user_id] = p;
         profileMapById[p.id] = p;
       });
     }
