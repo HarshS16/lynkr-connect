@@ -391,7 +391,7 @@ export const messagingAPI = {
               created_at,
               updated_at,
               is_deleted,
-              sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
+              sender:profiles(id, user_id, full_name, avatar_url)
             `)
             .eq('conversation_id', conversation.id)
             .eq('is_deleted', false)
@@ -403,7 +403,7 @@ export const messagingAPI = {
             .select(`
               id,
               sender_id,
-              sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
+              sender:profiles(id, user_id, full_name, avatar_url)
             `)
             .eq('conversation_id', conversation.id)
             .eq('is_deleted', false)
@@ -430,7 +430,7 @@ export const messagingAPI = {
             : (other
                 ? { id: other.user_id, full_name: undefined, avatar_url: undefined, current_position: undefined }
                 : null),
-          last_message: lastMessage as Message || undefined,
+          last_message: lastMessage as unknown as Message || undefined,
         } as ConversationWithDetails;
       })
     );
@@ -456,23 +456,7 @@ export const messagingAPI = {
         created_at,
         updated_at,
         is_deleted,
-        sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url),
-        reply_to_message:messages!messages_reply_to_message_id_fkey(
-          id,
-          conversation_id,
-          sender_id,
-          content,
-          message_type:message_type::text,
-          image_url,
-          file_url,
-          file_name,
-          file_size,
-          reply_to_message_id,
-          created_at,
-          updated_at,
-          is_deleted,
-          sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
-        )
+        sender:profiles(id, user_id, full_name, avatar_url)
       `)
       .eq('conversation_id', conversationId)
       .eq('is_deleted', false)
@@ -480,7 +464,7 @@ export const messagingAPI = {
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
-    return data.reverse() as Message[];
+    return data.reverse() as unknown as Message[];
   },
 
   // Send a message
@@ -508,12 +492,12 @@ export const messagingAPI = {
         created_at,
         updated_at,
         is_deleted,
-        sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
+        sender:profiles(id, user_id, full_name, avatar_url)
       `)
       .single();
 
     if (error) throw error;
-    return data as Message;
+    return data as unknown as Message;
   },
 
   // Upload image for message
@@ -590,13 +574,13 @@ export const messagingAPI = {
               created_at,
               updated_at,
               is_deleted,
-              sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
+              sender:profiles(id, user_id, full_name, avatar_url)
             `)
             .eq('id', payload.new.id)
             .single();
 
           if (data) {
-            callback(data as Message, 'INSERT');
+            callback(data as unknown as Message, 'INSERT');
           }
         }
       )
@@ -625,13 +609,13 @@ export const messagingAPI = {
               created_at,
               updated_at,
               is_deleted,
-              sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
+              sender:profiles(id, user_id, full_name, avatar_url)
             `)
             .eq('id', payload.new.id)
             .single();
 
           if (data) {
-            callback(data as Message, 'UPDATE');
+            callback(data as unknown as Message, 'UPDATE');
           }
         }
       )
