@@ -347,89 +347,66 @@ export const messagingAPI = {
 
     if (error) throw error;
 
-    const otherIds = new Set<string>();
-    for (const conv of data as any[]) {
-      const participants: { user_id: string }[] = conv.participants || [];
-      const other = participants.find(p => p.user_id !== currentUser.user!.id);
-      if (other && other.user_id) otherIds.add(other.user_id);
-    }
-    const idList = Array.from(otherIds);
-
-    type Prof = { id: string; user_id: string; full_name?: string | null; avatar_url?: string | null; current_position?: string | null };
-    const profileMap: Record<string, Prof> = {};
-    if (idList.length > 0) {
-      // Fetch profiles for all other users by user_id
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, user_id, full_name, avatar_url, current_position')
-        .in('user_id', idList);
-      
-      if (profileError) throw profileError;
-      
-      // Create a map of user_id to profile
-      (profiles || []).forEach((profile: any) => {
-        profileMap[profile.user_id] = profile;
-      });
-    }
-
     const conversationsWithMessages = await Promise.all(
       data.map(async (conversation: any) => {
-        const [{ data: lastMessage }, { data: otherMsg }] = await Promise.all([
-          supabase
-            .from('messages')
-            .select(`
-              id,
-              conversation_id,
-              sender_id,
-              content,
-              message_type:message_type::text,
-              image_url,
-              file_url,
-              file_name,
-              file_size,
-              reply_to_message_id,
-              created_at,
-              updated_at,
-              is_deleted,
-              sender:profiles(id, user_id, full_name, avatar_url)
-            `)
-            .eq('conversation_id', conversation.id)
-            .eq('is_deleted', false)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single(),
-          supabase
-            .from('messages')
-            .select(`
-              id,
-              sender_id,
-              sender:profiles(id, user_id, full_name, avatar_url)
-            `)
-            .eq('conversation_id', conversation.id)
-            .eq('is_deleted', false)
-            .neq('sender_id', currentUser.user!.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-        ]);
-
+        // Get the other participant's user_id
         const other = (conversation.participants || []).find((p: any) => p.user_id !== currentUser.user!.id);
-        const profFromMsg = otherMsg?.sender as any | null;
-        const profFromMap = other ? profileMap[other.user_id] : null;
-        const prof = profFromMsg || profFromMap || null;
+        
+        if (!other) {
+          return {
+            ...conversation,
+            other_participant: null,
+            last_message: undefined,
+          } as ConversationWithDetails;
+        }
+
+        // Fetch the other participant's profile directly
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, user_id, full_name, avatar_url, current_position')
+          .eq('user_id', other.user_id)
+          .single();
+
+        // Get the last message
+        const { data: lastMessage } = await supabase
+          .from('messages')
+          .select(`
+            id,
+            conversation_id,
+            sender_id,
+            content,
+            message_type:message_type::text,
+            image_url,
+            file_url,
+            file_name,
+            file_size,
+            reply_to_message_id,
+            created_at,
+            updated_at,
+            is_deleted,
+            sender:profiles(id, user_id, full_name, avatar_url)
+          `)
+          .eq('conversation_id', conversation.id)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
         return {
           ...conversation,
-          other_participant: prof
+          other_participant: profile
             ? {
-                id: prof.user_id || prof.id,
-                full_name: prof.full_name || undefined,
-                avatar_url: prof.avatar_url || undefined,
-                current_position: prof.current_position || undefined,
+                id: profile.user_id,
+                full_name: profile.full_name || 'User',
+                avatar_url: profile.avatar_url || undefined,
+                current_position: profile.current_position || undefined,
               }
-            : (other
-                ? { id: other.user_id, full_name: undefined, avatar_url: undefined, current_position: undefined }
-                : null),
+            : {
+                id: other.user_id,
+                full_name: 'User',
+                avatar_url: undefined,
+                current_position: undefined,
+              },
           last_message: lastMessage as unknown as Message || undefined,
         } as ConversationWithDetails;
       })
