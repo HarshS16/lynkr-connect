@@ -1,7 +1,7 @@
 # 🚀 Lynkr - Professional Networking Platform
 
 <div align="center">
-
+  
 ![Lynkr Logo](https://img.shields.io/badge/Lynkr-Professional%20Networking-blue?style=for-the-badge&logo=linkedin&logoColor=white)
 
 [![React](https://img.shields.io/badge/React-18.0+-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactjs.org/)
