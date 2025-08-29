@@ -361,11 +361,15 @@ export const messagingAPI = {
         }
 
         // Fetch the other participant's profile directly
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('id, user_id, full_name, avatar_url, current_position')
           .eq('user_id', other.user_id)
-          .single();
+          .maybeSingle();
+        
+        if (profileError) {
+          console.error('Error fetching profile for user:', other.user_id, profileError);
+        }
 
         // Get the last message
         const { data: lastMessage } = await supabase
@@ -394,19 +398,12 @@ export const messagingAPI = {
 
         return {
           ...conversation,
-          other_participant: profile
-            ? {
-                id: profile.user_id,
-                full_name: profile.full_name || 'User',
-                avatar_url: profile.avatar_url || undefined,
-                current_position: profile.current_position || undefined,
-              }
-            : {
-                id: other.user_id,
-                full_name: 'User',
-                avatar_url: undefined,
-                current_position: undefined,
-              },
+          other_participant: {
+            id: other.user_id,
+            full_name: profile?.full_name || 'User',
+            avatar_url: profile?.avatar_url || undefined,
+            current_position: profile?.current_position || undefined,
+          },
           last_message: lastMessage as unknown as Message || undefined,
         } as ConversationWithDetails;
       })
