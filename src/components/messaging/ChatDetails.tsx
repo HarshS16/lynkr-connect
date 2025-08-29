@@ -3,12 +3,18 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Image as ImageIcon, Link as LinkIcon, Users } from 'lucide-react';
+import { useConversationDetails } from '@/hooks/useConversationDetails';
 
 interface ChatDetailsProps {
   conversation?: ConversationWithDetails | null;
 }
 
-export function ChatDetails({ conversation }: ChatDetailsProps) {
+export function ChatDetails({ conversation: propConversation }: ChatDetailsProps) {
+  const { conversation: realTimeConversation } = useConversationDetails(propConversation?.id || null);
+  
+  // Use real-time conversation if available, otherwise use the prop conversation
+  const conversation = realTimeConversation || propConversation;
+
   if (!conversation) {
     return (
       <Card className="p-6 bg-white/90 backdrop-blur-xl border-blue-100 rounded-2xl text-blue-700 shadow-lg">
@@ -66,4 +72,3 @@ export function ChatDetails({ conversation }: ChatDetailsProps) {
 }
 
 export default ChatDetails;
-

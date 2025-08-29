@@ -31,6 +31,16 @@ export function useConversations() {
 
   useEffect(() => {
     fetchConversations();
+    
+    // Subscribe to conversation changes
+    const subscription = messagingAPI.subscribeToConversations(async (conversation, eventType) => {
+      // When a conversation is updated, refresh the conversations list
+      await fetchConversations();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [fetchConversations]);
 
   const createConversation = async (otherUserId: string) => {
@@ -89,8 +99,14 @@ export function useMessages(conversationId: string | null) {
       // Subscribe to new messages
       const subscription = messagingAPI.subscribeToMessages(
         conversationId,
-        (newMessage) => {
-          setMessages(prev => [...prev, newMessage]);
+        (message, eventType) => {
+          if (eventType === 'INSERT') {
+            setMessages(prev => [...prev, message]);
+          } else if (eventType === 'UPDATE') {
+            setMessages(prev => prev.map(msg => msg.id === message.id ? message : msg));
+          } else if (eventType === 'DELETE') {
+            setMessages(prev => prev.filter(msg => msg.id !== message.id));
+          }
         }
       );
 

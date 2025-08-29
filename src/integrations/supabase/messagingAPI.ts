@@ -537,7 +537,7 @@ export const messagingAPI = {
   },
 
   // Subscribe to new messages in a conversation
-  subscribeToMessages(conversationId: string, callback: (message: Message) => void) {
+  subscribeToMessages(conversationId: string, callback: (message: Message, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void) {
     return supabase
       .channel(`messages:${conversationId}`)
       .on(
@@ -563,26 +563,102 @@ export const messagingAPI = {
             .single();
 
           if (data) {
-            callback(data);
+            callback(data, 'INSERT');
           }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        async (payload) => {
+          const { data } = await supabase
+            .from('messages')
+            .select(`
+              id,
+              content,
+              message_type,
+              created_at,
+              is_deleted,
+              sender:profiles(id, full_name, avatar_url)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+
+          if (data) {
+            callback(data, 'UPDATE');
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        async (payload) => {
+          // For DELETE events, we only have the old record
+          callback({
+            id: payload.old.id,
+            conversation_id: payload.old.conversation_id,
+            sender_id: payload.old.sender_id,
+            content: payload.old.content,
+            message_type: payload.old.message_type,
+            image_url: payload.old.image_url,
+            file_url: payload.old.file_url,
+            file_name: payload.old.file_name,
+            file_size: payload.old.file_size,
+            created_at: payload.old.created_at,
+            updated_at: payload.old.updated_at,
+            is_deleted: true,
+            reply_to_message_id: payload.old.reply_to_message_id
+          } as Message, 'DELETE');
         }
       )
       .subscribe();
   },
 
   // Subscribe to conversation updates
-  subscribeToConversations(callback: (conversation: Conversation) => void) {
+  subscribeToConversations(callback: (conversation: Conversation, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void) {
     return supabase
       .channel('conversations')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'conversations'
         },
         (payload) => {
-          callback(payload.new as Conversation);
+          callback(payload.new as Conversation, 'INSERT');
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversations'
+        },
+        (payload) => {
+          callback(payload.new as Conversation, 'UPDATE');
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'conversations'
+        },
+        (payload) => {
+          callback(payload.old as Conversation, 'DELETE');
         }
       )
       .subscribe();
