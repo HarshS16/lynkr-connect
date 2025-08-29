@@ -356,21 +356,19 @@ export const messagingAPI = {
     const idList = Array.from(otherIds);
 
     type Prof = { id: string; user_id: string; full_name?: string | null; avatar_url?: string | null; current_position?: string | null };
-    const profileMapByUserId: Record<string, Prof> = {};
-    const profileMapById: Record<string, Prof> = {};
+    const profileMap: Record<string, Prof> = {};
     if (idList.length > 0) {
-      const [{ data: byUserId, error: e1 }, { data: byId, error: e2 }] = await Promise.all([
-        supabase.from('profiles').select('id, user_id, full_name, avatar_url, current_position').in('user_id', idList),
-        supabase.from('profiles').select('id, user_id, full_name, avatar_url, current_position').in('id', idList),
-      ]);
-      if (e1) throw e1;
-      if (e2) throw e2;
-      (byUserId || []).forEach((p: any) => {
-        profileMapByUserId[p.user_id] = p;
-        profileMapById[p.id] = p;
-      });
-      (byId || []).forEach((p: any) => {
-        profileMapById[p.id] = p;
+      // Fetch profiles for all other users by user_id
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, user_id, full_name, avatar_url, current_position')
+        .in('user_id', idList);
+      
+      if (profileError) throw profileError;
+      
+      // Create a map of user_id to profile
+      (profiles || []).forEach((profile: any) => {
+        profileMap[profile.user_id] = profile;
       });
     }
 
@@ -381,10 +379,19 @@ export const messagingAPI = {
             .from('messages')
             .select(`
               id,
+              conversation_id,
+              sender_id,
               content,
-              message_type,
+              message_type:message_type::text,
+              image_url,
+              file_url,
+              file_name,
+              file_size,
+              reply_to_message_id,
               created_at,
-              sender:profiles(id, full_name, avatar_url)
+              updated_at,
+              is_deleted,
+              sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
             `)
             .eq('conversation_id', conversation.id)
             .eq('is_deleted', false)
@@ -395,7 +402,8 @@ export const messagingAPI = {
             .from('messages')
             .select(`
               id,
-              sender:profiles(id, full_name, avatar_url)
+              sender_id,
+              sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
             `)
             .eq('conversation_id', conversation.id)
             .eq('is_deleted', false)
@@ -407,31 +415,22 @@ export const messagingAPI = {
 
         const other = (conversation.participants || []).find((p: any) => p.user_id !== currentUser.user!.id);
         const profFromMsg = otherMsg?.sender as any | null;
-        const profFromMap = other ? profileMapByUserId[other.user_id] : null;
-        let prof = profFromMsg || profFromMap || null;
-
-        if (!prof && other?.user_id) {
-          const { data: directProf } = await supabase
-            .from('profiles')
-            .select('id, user_id, full_name, avatar_url, current_position')
-            .eq('user_id', other.user_id)
-            .maybeSingle();
-          if (directProf) prof = directProf as any;
-        }
+        const profFromMap = other ? profileMap[other.user_id] : null;
+        const prof = profFromMsg || profFromMap || null;
 
         return {
           ...conversation,
           other_participant: prof
             ? {
-                id: (prof as any).user_id || (prof as any).id,
-                full_name: (prof as any).full_name,
-                avatar_url: (prof as any).avatar_url,
-                current_position: (prof as any).current_position,
+                id: prof.user_id || prof.id,
+                full_name: prof.full_name || undefined,
+                avatar_url: prof.avatar_url || undefined,
+                current_position: prof.current_position || undefined,
               }
             : (other
                 ? { id: other.user_id, full_name: undefined, avatar_url: undefined, current_position: undefined }
                 : null),
-          last_message: lastMessage || undefined,
+          last_message: lastMessage as Message || undefined,
         } as ConversationWithDetails;
       })
     );
@@ -445,16 +444,34 @@ export const messagingAPI = {
       .from('messages')
       .select(`
         id,
+        conversation_id,
+        sender_id,
         content,
-        message_type,
+        message_type:message_type::text,
+        image_url,
+        file_url,
+        file_name,
+        file_size,
+        reply_to_message_id,
         created_at,
+        updated_at,
         is_deleted,
-        sender:profiles(id, full_name, avatar_url),
-        reply_to_message:messages(
+        sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url),
+        reply_to_message:messages!messages_reply_to_message_id_fkey(
           id,
+          conversation_id,
+          sender_id,
           content,
-          message_type,
-          sender:profiles(id, full_name)
+          message_type:message_type::text,
+          image_url,
+          file_url,
+          file_name,
+          file_size,
+          reply_to_message_id,
+          created_at,
+          updated_at,
+          is_deleted,
+          sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
         )
       `)
       .eq('conversation_id', conversationId)
@@ -463,7 +480,7 @@ export const messagingAPI = {
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
-    return data.reverse();
+    return data.reverse() as Message[];
   },
 
   // Send a message
@@ -479,16 +496,24 @@ export const messagingAPI = {
       })
       .select(`
         id,
+        conversation_id,
+        sender_id,
         content,
-        message_type,
+        message_type:message_type::text,
+        image_url,
+        file_url,
+        file_name,
+        file_size,
+        reply_to_message_id,
         created_at,
+        updated_at,
         is_deleted,
-        sender:profiles(id, full_name, avatar_url)
+        sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
       `)
       .single();
 
     if (error) throw error;
-    return data;
+    return data as Message;
   },
 
   // Upload image for message
@@ -553,17 +578,25 @@ export const messagingAPI = {
             .from('messages')
             .select(`
               id,
+              conversation_id,
+              sender_id,
               content,
-              message_type,
+              message_type:message_type::text,
+              image_url,
+              file_url,
+              file_name,
+              file_size,
+              reply_to_message_id,
               created_at,
+              updated_at,
               is_deleted,
-              sender:profiles(id, full_name, avatar_url)
+              sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
             `)
             .eq('id', payload.new.id)
             .single();
 
           if (data) {
-            callback(data, 'INSERT');
+            callback(data as Message, 'INSERT');
           }
         }
       )
@@ -580,17 +613,25 @@ export const messagingAPI = {
             .from('messages')
             .select(`
               id,
+              conversation_id,
+              sender_id,
               content,
-              message_type,
+              message_type:message_type::text,
+              image_url,
+              file_url,
+              file_name,
+              file_size,
+              reply_to_message_id,
               created_at,
+              updated_at,
               is_deleted,
-              sender:profiles(id, full_name, avatar_url)
+              sender:profiles!messages_sender_id_fkey(id, user_id, full_name, avatar_url)
             `)
             .eq('id', payload.new.id)
             .single();
 
           if (data) {
-            callback(data, 'UPDATE');
+            callback(data as Message, 'UPDATE');
           }
         }
       )
@@ -609,7 +650,7 @@ export const messagingAPI = {
             conversation_id: payload.old.conversation_id,
             sender_id: payload.old.sender_id,
             content: payload.old.content,
-            message_type: payload.old.message_type,
+            message_type: payload.old.message_type as 'text' | 'image' | 'file',
             image_url: payload.old.image_url,
             file_url: payload.old.file_url,
             file_name: payload.old.file_name,
