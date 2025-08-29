@@ -911,9 +911,9 @@ export default function Profile() {
       
       {/* Connections Dialog */}
       <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
-        <DialogContent className="bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 shadow-2xl max-w-md">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white font-semibold text-lg">Connections</DialogTitle>
+            <DialogTitle>Connections</DialogTitle>
           </DialogHeader>
           <div className="max-h-96 overflow-y-auto">
             {acceptedConnections.length > 0 ? (
@@ -925,24 +925,24 @@ export default function Profile() {
                       key={conn.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800/50 transition-all duration-200 cursor-pointer border border-transparent hover:border-gray-700/30"
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-all duration-200 cursor-pointer border border-transparent hover:border-border"
                       onClick={() => {
                         navigate(`/profile/${otherUser?.user_id}`);
                         setConnectionsOpen(false);
                       }}
                     >
-                      <Avatar className="h-10 w-10 border-2 border-gray-600/50">
+                      <Avatar className="h-10 w-10">
                         <AvatarImage src={otherUser?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-blue-600 text-white font-medium">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
                           {otherUser?.full_name?.charAt(0).toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <h4 className="font-medium text-white hover:text-blue-400 transition-colors">
+                        <h4 className="font-medium hover:text-primary transition-colors">
                           {otherUser?.full_name || "Unknown User"}
                         </h4>
                         {otherUser?.current_position && (
-                          <p className="text-sm text-gray-400">
+                          <p className="text-sm text-muted-foreground">
                             {otherUser.current_position}
                             {otherUser?.company && ` at ${otherUser.company}`}
                           </p>
@@ -954,7 +954,7 @@ export default function Profile() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-400">No connections found.</p>
+                <p className="text-muted-foreground">No connections found.</p>
               </div>
             )}
           </div>

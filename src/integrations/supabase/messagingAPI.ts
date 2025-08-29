@@ -317,8 +317,13 @@ export const messagingAPI = {
 
   // Get user's conversations with details
   async getUserConversations(): Promise<ConversationWithDetails[]> {
-    const { data: currentUser } = await supabase.auth.getUser();
+    const { data: currentUser, error: authError } = await supabase.auth.getUser();
+    if (authError) {
+      console.error('Auth error:', authError);
+      throw authError;
+    }
     if (!currentUser.user) throw new Error('Not authenticated');
+    console.log('Current user:', currentUser.user.id);
 
     const { data: conversationIds, error: participantError } = await supabase
       .from('conversation_participants')
